@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  chatterbox-tts:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    container_name: chatterbox-tts-api
+    ports:
+      - '${PORT:-5123}:${PORT:-5123}'
+    environment:
+      # API Configuration
+      - PORT=${PORT:-5123}
+      - HOST=${HOST:-0.0.0.0}
+
+      # TTS Model Settings
+      - EXAGGERATION=${EXAGGERATION:-0.5}
+      - CFG_WEIGHT=${CFG_WEIGHT:-0.5}
+      - TEMPERATURE=${TEMPERATURE:-0.8}
+
+      # Text Processing
+      - MAX_CHUNK_LENGTH=${MAX_CHUNK_LENGTH:-280}
+      - MAX_TOTAL_LENGTH=${MAX_TOTAL_LENGTH:-3000}
+
+      # Voice and Model Settings (force CPU)
+      - VOICE_SAMPLE_PATH=/app/voice-sample.mp3
+      - DEVICE=cpu
+      - MODEL_CACHE_DIR=/app/models
+
+      # Flask Settings
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - FLASK_DEBUG=${FLASK_DEBUG:-false}
+    volumes:
+      # Mount voice sample file (optional) - use absolute paths
+      - ${VOICE_SAMPLE_HOST_PATH:-./voice-sample.mp3}:/app/voice-sample.mp3:ro
+
+      # Mount model cache for persistence
+      - chatterbox-models:/app/models
+
+      # Optional: Mount custom voice samples directory
+      - ${VOICE_SAMPLES_DIR:-./voice-samples}:/app/voice-samples:ro
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:${PORT:-5123}/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+
+volumes:
+  chatterbox-models:
+    driver: local
