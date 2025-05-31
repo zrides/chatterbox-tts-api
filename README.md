@@ -4,7 +4,7 @@
 	<a href="https://github.com/travisvn/chatterbox-tts-api">
 		<img src="https://img.shields.io/github/stars/travisvn/chatterbox-tts-api?style=social" alt="GitHub stars"></a>
 	<a href="https://github.com/travisvn/chatterbox-tts-api">
-		<img src=https://img.shields.io/github/forks/travisvn/chatterbox-tts-api?style=social" alt="GitHub forks"></a>
+		<img alt="GitHub forks" src="https://img.shields.io/github/forks/travisvn/chatterbox-tts-api"></a>
 	<a href="https://github.com/travisvn/chatterbox-tts-api/issues">
 	  <img src="https://img.shields.io/github/issues/travisvn/chatterbox-tts-api" alt="GitHub issues"></a>
 	<img src="https://img.shields.io/github/last-commit/travisvn/chatterbox-tts-api?color=red" alt="GitHub last commit">
