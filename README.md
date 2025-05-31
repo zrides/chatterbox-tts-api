@@ -1,5 +1,18 @@
 # Chatterbox TTS API
 
+<p align="center">
+	<a href="https://github.com/travisvn/chatterbox-tts-api">
+		<img src="https://img.shields.io/github/stars/travisvn/chatterbox-tts-api?style=social" alt="GitHub stars"></a>
+	<a href="https://github.com/travisvn/chatterbox-tts-api">
+		<img src=https://img.shields.io/github/forks/travisvn/chatterbox-tts-api?style=social" alt="GitHub forks"></a>
+	<a href="https://github.com/travisvn/chatterbox-tts-api/issues">
+	  <img src="https://img.shields.io/github/issues/travisvn/chatterbox-tts-api" alt="GitHub issues"></a>
+	<img src="https://img.shields.io/github/last-commit/travisvn/chatterbox-tts-api?color=red" alt="GitHub last commit">
+  <a href="https://readaloudai.com/discord">
+    <img src="https://img.shields.io/badge/Discord-Vision_Recall-blue?logo=discord&logoColor=white" alt="Discord">
+  </a>
+</p>
+
 A Flask-based REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities.
 
 ## Features
@@ -304,11 +317,6 @@ This API wrapper is provided under the same license terms as the underlying Chat
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
-
-## Related Projects
-
-- [Chatterbox TTS](https://github.com/resemble-ai/chatterbox) - The core TTS model
-- [Resemble AI](https://resemble.ai) - Production TTS services
 
 ## Support
 
