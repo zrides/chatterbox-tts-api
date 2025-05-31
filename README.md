@@ -1,6 +1,6 @@
 # Chatterbox TTS API
 
-A Flask-based REST API for [ChatterboxTTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities.
+A Flask-based REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities.
 
 ## Features
 
@@ -55,7 +55,7 @@ docker logs chatterbox-tts-api -f
 # Test the API
 curl -X POST http://localhost:5123/v1/audio/speech \
   -H "Content-Type: application/json" \
-  -d '{"input": "Hello from ChatterboxTTS!"}' \
+  -d '{"input": "Hello from Chatterbox TTS!"}' \
   --output test.wav
 ```
 
@@ -295,7 +295,7 @@ curl http://localhost:5123/health
 
 ## License
 
-This API wrapper is provided under the same license terms as the underlying ChatterboxTTS model. See the [ChatterboxTTS repository](https://github.com/resemble-ai/chatterbox) for details.
+This API wrapper is provided under the same license terms as the underlying Chatterbox TTS model. See the [Chatterbox TTS repository](https://github.com/resemble-ai/chatterbox) for details.
 
 ## Contributing
 
@@ -307,14 +307,14 @@ This API wrapper is provided under the same license terms as the underlying Chat
 
 ## Related Projects
 
-- [ChatterboxTTS](https://github.com/resemble-ai/chatterbox) - The core TTS model
+- [Chatterbox TTS](https://github.com/resemble-ai/chatterbox) - The core TTS model
 - [Resemble AI](https://resemble.ai) - Production TTS services
 
 ## Support
 
 - 📖 **Documentation**: See [API_README.md](API_README.md) and [DOCKER_README.md](DOCKER_README.md)
 - 🐛 **Issues**: Report bugs and feature requests via GitHub issues
-- 💬 **Discord**: Join the [ChatterboxTTS Discord](https://discord.gg/XqS7RxUp) or the [Discord for this project](https://readaloudai.com/discord)
+- 💬 **Discord**: Join the [Chatterbox TTS Discord](https://discord.gg/XqS7RxUp) or the [Discord for this project](https://readaloudai.com/discord)
 
 ---
 

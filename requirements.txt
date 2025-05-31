@@ -1,4 +1,5 @@
-# ChatterboxTTS Core Package
+# Chatterbox TTS Core Package
+#chatterbox-tts
 chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git
 
 # PyTorch with CPU support (ensure CPU compatibility)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for the ChatterboxTTS Flask API
+Test script for the Chatterbox TTS Flask API
 """
 
 import requests
@@ -143,7 +143,7 @@ def test_error_handling():
 def main():
     """Run all tests"""
     print("=" * 60)
-    print("ChatterboxTTS API Test Suite")
+    print("Chatterbox TTS API Test Suite")
     print("=" * 60)
     
     # Test basic endpoints

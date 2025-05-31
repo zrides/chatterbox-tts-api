@@ -8,7 +8,7 @@ from flask import Flask, request, jsonify, send_file
 from werkzeug.exceptions import BadRequest
 import torchaudio as ta
 
-from chatterbox.tts import ChatterboxTTS
+from chatterbox.tts import Chatterbox TTS
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -110,7 +110,7 @@ def initialize_model():
             print("Warning: MPS explicitly requested but not available, falling back to CPU")
             DEVICE = 'cpu'
     
-    print(f"Initializing ChatterboxTTS model on device: {DEVICE}")
+    print(f"Initializing Chatterbox TTS model on device: {DEVICE}")
     print(f"Model cache directory: {Config.MODEL_CACHE_DIR}")
     print(f"Voice sample: {Config.VOICE_SAMPLE_PATH}")
     
@@ -137,8 +137,8 @@ def initialize_model():
     safetensors.torch.load_file = force_cpu_load_file
     
     try:
-        print("Loading ChatterboxTTS model with CPU compatibility fixes...")
-        model = ChatterboxTTS.from_pretrained(device=DEVICE)
+        print("Loading Chatterbox TTS model with CPU compatibility fixes...")
+        model = Chatterbox TTS.from_pretrained(device=DEVICE)
         print("✅ Model initialized successfully!")
     except Exception as e:
         print(f"❌ Error initializing model: {e}")
@@ -148,7 +148,7 @@ def initialize_model():
         if DEVICE != 'cpu':
             print("Trying with explicit CPU device...")
             DEVICE = 'cpu'
-            model = ChatterboxTTS.from_pretrained(device=DEVICE)
+            model = Chatterbox TTS.from_pretrained(device=DEVICE)
             print("✅ Model initialized successfully on CPU fallback!")
         else:
             # If still failing on CPU, there might be a deeper issue
@@ -248,7 +248,7 @@ def concatenate_audio_chunks(audio_chunks: list, sample_rate: int) -> torch.Tens
 @app.route('/audio/speech', methods=['POST'])
 def text_to_speech():
     """
-    Convert text to speech using ChatterboxTTS
+    Convert text to speech using Chatterbox TTS
     
     Expected JSON payload:
     {
@@ -411,7 +411,7 @@ def handle_internal_error(e):
 def main():
     """Main entry point for console script"""
     print("=" * 60)
-    print("ChatterboxTTS API Server")
+    print("Chatterbox TTS API Server")
     print("=" * 60)
     print(f"Host: {Config.HOST}")
     print(f"Port: {Config.PORT}")

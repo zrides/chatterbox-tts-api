@@ -1,6 +1,6 @@
 # Chatterbox TTS Flask API
 
-This API provides a Flask-based web service for the ChatterboxTTS text-to-speech system, designed to be compatible with OpenAI's TTS API format.
+This API provides a Flask-based web service for the Chatterbox TTS text-to-speech system, designed to be compatible with OpenAI's TTS API format.
 
 ## Features
 
@@ -16,7 +16,7 @@ This API provides a Flask-based web service for the ChatterboxTTS text-to-speech
 
 ### Prerequisites
 
-1. Ensure you have the ChatterboxTTS package installed:
+1. Ensure you have the Chatterbox TTS package installed:
 
    ```bash
    pip install chatterbox-tts
@@ -61,7 +61,7 @@ python api.py
 The server will:
 
 - Automatically detect the best available device (CUDA, MPS, or CPU)
-- Load the ChatterboxTTS model
+- Load the Chatterbox TTS model
 - Start the Flask server on `http://localhost:5123` (or your configured port)
 
 ## API Endpoints
@@ -70,7 +70,7 @@ The server will:
 
 **POST** `/v1/audio/speech`
 
-Generate speech from text using the ChatterboxTTS model.
+Generate speech from text using the Chatterbox TTS model.
 
 **Request Body:**
 
@@ -375,7 +375,7 @@ curl -X POST http://localhost:5123/v1/audio/speech \
 
 ### Common Issues
 
-1. **Model not loading**: Ensure ChatterboxTTS is properly installed
+1. **Model not loading**: Ensure Chatterbox TTS is properly installed
 2. **Voice sample missing**: Verify `voice-sample.mp3` exists at the configured path
 3. **CUDA out of memory**: Try using CPU device (`DEVICE=cpu`)
 4. **Slow performance**: GPU recommended; ensure CUDA/MPS is available

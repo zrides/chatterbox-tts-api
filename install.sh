@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# ChatterboxTTS API Installation Script
+# Chatterbox TTS API Installation Script
 
 set -e
 
-echo "🚀 Installing ChatterboxTTS API..."
+echo "🚀 Installing Chatterbox TTS API..."
 
 # Check Python version
 python_version=$(python3 --version 2>&1 | grep -oP '(?<=Python )\d+\.\d+')

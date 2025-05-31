@@ -1,6 +1,6 @@
 # Chatterbox TTS API Docker Deployment Guide
 
-This guide covers how to run the ChatterboxTTS API using Docker and Docker Compose v2.
+This guide covers how to run the Chatterbox TTS API using Docker and Docker Compose v2.
 
 ## 🚀 Quick Start
 

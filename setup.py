@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ChatterboxTTS API - Setup Script
+Chatterbox TTS API - Setup Script
 """
 
 from setuptools import setup, find_packages
@@ -16,7 +16,7 @@ setup(
     version="1.0.0",
     author="Travis Van Nimwegen",
     author_email="tts@travis2.com",
-    description="REST API for ChatterboxTTS with OpenAI compatibility",
+    description="REST API for Chatterbox TTS with OpenAI compatibility",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/travisvn/chatterbox-tts-api",
