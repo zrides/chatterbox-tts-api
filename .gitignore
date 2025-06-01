@@ -58,6 +58,8 @@ logs/
 *.swp
 *.swo
 *~
+.cursorignore
+.internal/
 
 # OS
 .DS_Store
@@ -87,5 +89,3 @@ htmlcov/
 tmp/
 temp/
 *.tmp 
-
-.internal/
