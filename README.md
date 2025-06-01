@@ -13,7 +13,7 @@
   </a>
 </p>
 
-A Flask-based REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities.
+REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities
 
 ## Features
 
@@ -305,10 +305,6 @@ python test_api.py
 # Test specific endpoint
 curl http://localhost:5123/health
 ```
-
-## License
-
-This API wrapper is provided under the same license terms as the underlying Chatterbox TTS model. See the [Chatterbox TTS repository](https://github.com/resemble-ai/chatterbox) for details.
 
 ## Contributing
 
