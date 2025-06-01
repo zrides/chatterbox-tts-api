@@ -8,7 +8,7 @@ from flask import Flask, request, jsonify, send_file
 from werkzeug.exceptions import BadRequest
 import torchaudio as ta
 
-from chatterbox.tts import Chatterbox TTS
+from chatterbox.tts import ChatterboxTTS
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -138,7 +138,7 @@ def initialize_model():
     
     try:
         print("Loading Chatterbox TTS model with CPU compatibility fixes...")
-        model = Chatterbox TTS.from_pretrained(device=DEVICE)
+        model = ChatterboxTTS.from_pretrained(device=DEVICE)
         print("✅ Model initialized successfully!")
     except Exception as e:
         print(f"❌ Error initializing model: {e}")
@@ -148,7 +148,7 @@ def initialize_model():
         if DEVICE != 'cpu':
             print("Trying with explicit CPU device...")
             DEVICE = 'cpu'
-            model = Chatterbox TTS.from_pretrained(device=DEVICE)
+            model = ChatterboxTTS.from_pretrained(device=DEVICE)
             print("✅ Model initialized successfully on CPU fallback!")
         else:
             # If still failing on CPU, there might be a deeper issue
