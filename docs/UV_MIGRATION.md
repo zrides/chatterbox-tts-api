@@ -102,7 +102,7 @@ UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu uv sync
 ### Force CUDA version:
 
 ```bash
-UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cu126 uv sync
+UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cu124 uv sync
 ```
 
 ## Step 4: Docker Migration

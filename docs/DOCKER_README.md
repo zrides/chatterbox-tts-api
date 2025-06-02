@@ -11,7 +11,12 @@ This guide covers how to run the Chatterbox TTS API using Docker and Docker Comp
    ```bash
    git clone https://github.com/travisvn/chatterbox-tts-api
    cd chatterbox-tts-api
-   cp .env.example .env  # Copy and customize environment variables
+
+   # For Docker deployment (recommended)
+   cp .env.example.docker .env
+
+   # Or for local development
+   # cp .env.example .env
    ```
 
 2. **Choose your Docker Compose variant:**
@@ -94,12 +99,31 @@ Then uncomment the GPU section in `docker-compose.yml`.
 
 ## ⚙️ Configuration
 
-### Environment Variables
+### Environment Files
 
-Copy `env.example` to `.env` and customize:
+The project provides two environment example files:
+
+- **`.env.example.docker`** - Pre-configured for Docker with container paths (`/app/models`, `/app/voice-sample.mp3`)
+- **`.env.example`** - Configured for local development with relative paths (`./models`, `./voice-sample.mp3`)
+
+For Docker deployment, use the Docker-specific version:
 
 ```bash
-cp env.example .env
+cp .env.example.docker .env
+```
+
+### Environment Variables
+
+Copy the appropriate environment file and customize:
+
+```bash
+# For Docker (recommended)
+cp .env.example.docker .env
+
+# For local development
+cp .env.example .env
+
+# Edit as needed
 nano .env  # or your preferred editor
 ```
 

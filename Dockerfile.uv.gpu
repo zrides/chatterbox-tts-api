@@ -1,16 +1,19 @@
 # Use NVIDIA CUDA runtime as base for better GPU support
-FROM nvidia/cuda:12.6-runtime-ubuntu20.04
+FROM nvidia/cuda:12.4.1-runtime-ubuntu20.04
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Python and system dependencies
+# Install Python 3.11 and system dependencies
 RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y \
     python3.11 \
     python3.11-dev \
-    python3-pip \
+    python3.11-distutils \
     git \
     wget \
     curl \
@@ -39,8 +42,7 @@ COPY voice-sample.mp3 ./voice-sample.mp3
 # Create directory for model cache
 RUN mkdir -p /app/models
 
-# Force CUDA variant and install dependencies with uv
-ENV UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cu126
+# Install dependencies with uv (pyproject.toml handles PyTorch index selection)
 RUN uv sync --frozen
 
 # Set default environment variables (prefer CUDA)
@@ -58,6 +60,10 @@ ENV HOST=0.0.0.0
 # NVIDIA/CUDA environment variables
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# cuDNN compatibility settings
+ENV TORCH_CUDNN_V8_API_ENABLED=1
+ENV CUDA_MODULE_LOADING=LAZY
 
 # Add uv venv to PATH
 ENV PATH="/app/.venv/bin:$PATH"

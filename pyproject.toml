@@ -30,28 +30,11 @@ name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
-[[tool.uv.index]]
-name = "pytorch-cu126"
-url = "https://download.pytorch.org/whl/cu126"
-explicit = true
-
 # Source configuration with environment markers for cross-platform support
+# Removed custom CUDA indexes - let PyTorch auto-detect CUDA from runtime
 [tool.uv.sources]
-torch = [
-  { index = "pytorch-cu126", marker = "sys_platform == 'linux'" },
-  { index = "pytorch-cpu", marker = "sys_platform != 'linux'" },
-]
-torchaudio = [
-  { index = "pytorch-cu126", marker = "sys_platform == 'linux'" },
-  { index = "pytorch-cpu", marker = "sys_platform != 'linux'" },
-]
-
-[project.scripts]
-chatterbox-tts-api = "api:main"
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+# torch and torchaudio will use default PyPI, which should auto-detect CUDA
+# from the CUDA runtime environment in Docker
 
 [tool.uv]
 dev-dependencies = ["requests>=2.28.0"]

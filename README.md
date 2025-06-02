@@ -28,7 +28,29 @@ REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), provid
 
 ### 1. Local Installation
 
-#### Option A: Using pip (Traditional)
+#### Option A: Using uv (Recommended - Faster & Better Dependencies)
+
+```bash
+# Clone the repository
+git clone https://github.com/travisvn/chatterbox-tts-api
+cd chatterbox-tts-api
+
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies with uv (automatically creates venv)
+uv sync
+
+# Copy and customize environment variables
+cp .env.example .env
+
+# Start the API
+uv run api.py
+```
+
+> 💡 **Why uv?** Users report better compatibility with `chatterbox-tts`, 25-40% faster installs, and superior dependency resolution. [See migration guide →](docs/UV_MIGRATION.md)
+
+#### Option B: Using pip (Traditional)
 
 ```bash
 # Clone the repository
@@ -52,35 +74,16 @@ cp .env.example .env
 python api.py
 ```
 
-#### Option B: Using uv (Recommended - Faster & Better Dependencies)
-
-```bash
-# Clone the repository
-git clone https://github.com/travisvn/chatterbox-tts-api
-cd chatterbox-tts-api
-
-# Install uv if you haven't already
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install dependencies with uv (automatically creates venv)
-uv sync
-
-# Copy and customize environment variables
-cp .env.example .env
-
-# Start the API
-uv run api.py
-```
-
-> 💡 **Why uv?** Users report better compatibility with `chatterbox-tts`, 25-40% faster installs, and superior dependency resolution. [See migration guide →](docs/UV_MIGRATION.md)
-
 ### 2. Docker (Recommended)
 
 ```bash
 # Clone and start with Docker Compose
 git clone https://github.com/travisvn/chatterbox-tts-api
 cd chatterbox-tts-api
-cp .env.example .env  # Customize as needed
+
+# Use Docker-optimized environment variables
+cp .env.example.docker .env  # Docker-specific paths, ready to use
+# Or: cp .env.example .env    # Local development paths, needs customization
 
 # Choose your deployment method:
 docker compose up -d                                    # Standard (pip-based)
@@ -98,6 +101,8 @@ curl -X POST http://localhost:5123/v1/audio/speech \
   -d '{"input": "Hello from Chatterbox TTS!"}' \
   --output test.wav
 ```
+
+> NOTE: Docker use of `uv` is currently experimental and probably needs adjustments to the configuration (for GPU)
 
 ## API Usage
 
@@ -143,7 +148,22 @@ with open("output.wav", "wb") as f:
 
 ## Configuration
 
-Key environment variables (see `.env.example` for full list):
+The project provides two environment example files:
+
+- **`.env.example`** - For local development (uses `./models`, `./voice-sample.mp3`)
+- **`.env.example.docker`** - For Docker deployment (uses `/app/models`, `/app/voice-sample.mp3`)
+
+Choose the appropriate one for your setup:
+
+```bash
+# For local development
+cp .env.example .env
+
+# For Docker deployment
+cp .env.example.docker .env
+```
+
+Key environment variables (see the example files for full list):
 
 | Variable            | Default              | Description                    |
 | ------------------- | -------------------- | ------------------------------ |
@@ -154,7 +174,8 @@ Key environment variables (see `.env.example` for full list):
 | `VOICE_SAMPLE_PATH` | `./voice-sample.mp3` | Voice sample for cloning       |
 | `DEVICE`            | `auto`               | Device (auto/cuda/mps/cpu)     |
 
-## Voice Cloning
+<details>
+<summary><strong>🎭 Voice Cloning</strong></summary>
 
 Replace the default voice sample:
 
@@ -172,7 +193,10 @@ For best results:
 - Avoid background noise
 - Prefer WAV or high-quality MP3
 
-## Docker Deployment
+</details>
+
+<details>
+<summary><strong>🐳 Docker Deployment</strong></summary>
 
 ### Development
 
@@ -198,6 +222,11 @@ docker compose -f docker-compose.yml up -d
 # Ensure NVIDIA Container Toolkit is installed
 docker compose up -d
 ```
+
+</details>
+
+<details>
+<summary><strong>📚 API Reference</strong></summary>
 
 ## API Endpoints
 
@@ -231,7 +260,10 @@ docker compose up -d
 - `0.8`: Default balance
 - `1.0+`: More creative/random
 
-## Testing
+</details>
+
+<details>
+<summary><strong>🧪 Testing</strong></summary>
 
 Run the test suite:
 
@@ -243,14 +275,20 @@ python test_api.py
 uv run test_api.py
 ```
 
-## Performance
+</details>
+
+<details>
+<summary><strong>⚡ Performance</strong></summary>
 
 - **CPU**: Works but slower, reduce chunk size for better memory usage
 - **GPU**: Recommended for production, significantly faster
 - **Memory**: 4GB minimum, 8GB+ recommended
 - **Concurrency**: Single request processing for stability
 
-## Troubleshooting
+</details>
+
+<details>
+<summary><strong>🔧 Troubleshooting</strong></summary>
 
 ### Common Issues
 
@@ -289,7 +327,7 @@ uv run api.py
 ```bash
 # With pip
 pip uninstall torch torchvision torchaudio
-pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu126
+pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 pip install chatterbox-tts
 
 # With uv (handles this automatically)
@@ -325,7 +363,10 @@ rm -rf models/
 python api.py  # or: uv run api.py
 ```
 
-## Development
+</details>
+
+<details>
+<summary><strong>💻 Development</strong></summary>
 
 ### Local Development
 
@@ -351,13 +392,18 @@ python test_api.py  # or: uv run test_api.py
 curl http://localhost:5123/health
 ```
 
-## Contributing
+</details>
+
+<details>
+<summary><strong>🤝 Contributing</strong></summary>
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
 5. Submit a pull request
+
+</details>
 
 ## Support
 
