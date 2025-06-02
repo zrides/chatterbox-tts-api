@@ -74,7 +74,12 @@ cp .env.example .env
 python api.py
 ```
 
-### 2. Docker ~~(Recommended)~~ _(under review)_
+### 2. Docker (Recommended)*
+
+> [!NOTE]
+> \* `docker-compose.gpu.yml` should work — the `uv` version is being debugged at the moment.
+> 
+> The non-Docker use of `uv` is recommended, it's only the `Dockerfile.uv.gpu` that is causing issues.
 
 ```bash
 # Clone and start with Docker Compose
@@ -101,8 +106,6 @@ curl -X POST http://localhost:5123/v1/audio/speech \
   -d '{"input": "Hello from Chatterbox TTS!"}' \
   --output test.wav
 ```
-
-> NOTE: Docker use of `uv` is currently experimental and probably needs adjustments to the configuration (for GPU)
 
 ## API Usage
 
