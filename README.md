@@ -412,7 +412,7 @@ curl http://localhost:5123/health
 - 📖 **Documentation**: See [API Documentation](docs/API_README.md) and [Docker Guide](docs/DOCKER_README.md)
 - 🔄 **Migration**: Upgrading to uv? See the [uv Migration Guide](docs/UV_MIGRATION.md)
 - 🐛 **Issues**: Report bugs and feature requests via GitHub issues
-- 💬 **Discord**: Join the [Chatterbox TTS Discord](https://discord.gg/XqS7RxUp) or the [Discord for this project](https://readaloudai.com/discord)
+- 💬 **Discord**: Join the [Chatterbox TTS Discord](https://discord.gg/XqS7RxUp) or the [Discord for this project](http://chatterboxtts.com/discord)
 
 ---
 
