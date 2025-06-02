@@ -74,7 +74,7 @@ cp .env.example .env
 python api.py
 ```
 
-### 2. Docker (Recommended)
+### 2. Docker ~~(Recommended)~~ _(under review)_
 
 ```bash
 # Clone and start with Docker Compose
