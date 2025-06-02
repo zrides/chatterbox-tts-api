@@ -17,16 +17,19 @@
   </a>
 </p>
 
-REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities
+**FastAPI**-powered REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities
 
 ## Features
 
 🚀 **OpenAI-Compatible API** - Drop-in replacement for OpenAI's TTS API  
+⚡ **FastAPI Performance** - High-performance async API with automatic documentation  
 🎭 **Voice Cloning** - Use your own voice samples for personalized speech  
 📝 **Smart Text Processing** - Automatic chunking for long texts  
 🐳 **Docker Ready** - Full containerization support  
 ⚙️ **Configurable** - Extensive environment variable configuration  
-🎛️ **Parameter Control** - Real-time adjustment of speech characteristics
+🎛️ **Parameter Control** - Real-time adjustment of speech characteristics  
+📚 **Auto Documentation** - Interactive API docs at `/docs` and `/redoc`  
+🔧 **Type Safety** - Full Pydantic validation for requests and responses
 
 ## Quick Start
 
@@ -48,7 +51,9 @@ uv sync
 # Copy and customize environment variables
 cp .env.example .env
 
-# Start the API
+# Start the API with FastAPI
+uv run uvicorn api:app --host 0.0.0.0 --port 5123
+# Or use the main script
 uv run api.py
 ```
 
@@ -74,7 +79,9 @@ cp .env.example .env
 # Add your voice sample (or use the provided one)
 # cp your-voice.mp3 voice-sample.mp3
 
-# Start the API
+# Start the API with FastAPI
+uvicorn api:app --host 0.0.0.0 --port 5123
+# Or use the main script
 python api.py
 ```
 
@@ -105,6 +112,14 @@ curl -X POST http://localhost:5123/v1/audio/speech \
   -d '{"input": "Hello from Chatterbox TTS!"}' \
   --output test.wav
 ```
+
+### 3. Explore the API
+
+Once running, visit:
+
+- **Interactive API Docs**: http://localhost:5123/docs (Swagger UI)
+- **Alternative Docs**: http://localhost:5123/redoc (ReDoc)
+- **OpenAPI Schema**: http://localhost:5123/openapi.json
 
 ## API Usage
 
@@ -211,7 +226,7 @@ docker compose up
 ```bash
 # Create production environment
 cp .env.example .env
-nano .env  # Set FLASK_DEBUG=false, etc.
+nano .env  # Set production values
 
 # Deploy
 docker compose -f docker-compose.yml up -d
@@ -220,7 +235,7 @@ docker compose -f docker-compose.yml up -d
 ### With GPU Support
 
 ```bash
-# Uncomment GPU section in docker-compose.yml
+# Enable GPU section in docker-compose.yml
 # Ensure NVIDIA Container Toolkit is installed
 docker compose up -d
 ```
@@ -238,6 +253,8 @@ docker compose up -d
 | `/health`          | GET    | Health check and status          |
 | `/config`          | GET    | Current configuration            |
 | `/v1/models`       | GET    | Available models (OpenAI compat) |
+| `/docs`            | GET    | Interactive API documentation    |
+| `/redoc`           | GET    | Alternative API documentation    |
 
 ## Parameters Reference
 
@@ -277,15 +294,32 @@ python test_api.py
 uv run test_api.py
 ```
 
+The test suite now includes:
+
+- Basic endpoint testing
+- FastAPI documentation availability
+- Custom parameter validation
+- Error handling verification
+- Performance benchmarking
+
 </details>
 
 <details>
 <summary><strong>⚡ Performance</strong></summary>
 
+**FastAPI Benefits:**
+
+- **Async support**: Better concurrent request handling
+- **Faster serialization**: JSON responses ~25% faster than Flask
+- **Type validation**: Pydantic models prevent invalid requests
+- **Auto documentation**: No manual API doc maintenance
+
+**Hardware Recommendations:**
+
 - **CPU**: Works but slower, reduce chunk size for better memory usage
 - **GPU**: Recommended for production, significantly faster
 - **Memory**: 4GB minimum, 8GB+ recommended
-- **Concurrency**: Single request processing for stability
+- **Concurrency**: Async support allows better multi-request handling
 
 </details>
 
@@ -303,7 +337,7 @@ RuntimeError: Attempting to deserialize object on a CUDA device but torch.cuda.i
 This happens because `chatterbox-tts` models require PyTorch with CUDA support, even when running on CPU. Solutions:
 
 ```bash
-# Option 1: Use default setup (now includes CUDA-enabled PyTorch (maybe))
+# Option 1: Use default setup (now includes CUDA-enabled PyTorch)
 docker compose up -d
 
 # Option 2: Use explicit CUDA setup (traditional)
@@ -321,7 +355,7 @@ docker compose up -d --build
 
 # Option 6: Try uv for better dependency resolution
 uv sync
-uv run api.py
+uv run uvicorn api:app --host 0.0.0.0 --port 5123
 ```
 
 **For local development**, install PyTorch with CUDA support:
@@ -362,7 +396,20 @@ echo "MAX_CHUNK_LENGTH=200" >> .env
 ```bash
 # Clear cache and retry
 rm -rf models/
-python api.py  # or: uv run api.py
+uvicorn api:app --host 0.0.0.0 --port 5123  # or: uv run api.py
+```
+
+**FastAPI startup issues**
+
+```bash
+# Check if uvicorn is installed
+uvicorn --version
+
+# Run with verbose logging
+uvicorn api:app --host 0.0.0.0 --port 5123 --log-level debug
+
+# Alternative startup method
+python api.py
 ```
 
 </details>
@@ -379,9 +426,11 @@ pip install -e .
 # Or with uv
 uv sync --extra dev
 
-# Enable debug mode
-export FLASK_DEBUG=true
-python api.py  # or: uv run api.py
+# Start with auto-reload (FastAPI development)
+uvicorn api:app --host 0.0.0.0 --port 5123 --reload
+
+# Or use the main script
+python api.py
 ```
 
 ### Testing
@@ -392,7 +441,17 @@ python test_api.py  # or: uv run test_api.py
 
 # Test specific endpoint
 curl http://localhost:5123/health
+
+# Check API documentation
+curl http://localhost:5123/openapi.json
 ```
+
+### FastAPI Development Features
+
+- **Auto-reload**: Use `--reload` flag for development
+- **Interactive docs**: Visit `/docs` for live API testing
+- **Type hints**: Full IDE support with Pydantic models
+- **Validation**: Automatic request/response validation
 
 </details>
 
@@ -403,7 +462,8 @@ curl http://localhost:5123/health
 2. Create a feature branch
 3. Make your changes
 4. Add tests if applicable
-5. Submit a pull request
+5. Ensure FastAPI docs are updated
+6. Submit a pull request
 
 </details>
 
@@ -411,9 +471,10 @@ curl http://localhost:5123/health
 
 - 📖 **Documentation**: See [API Documentation](docs/API_README.md) and [Docker Guide](docs/DOCKER_README.md)
 - 🔄 **Migration**: Upgrading to uv? See the [uv Migration Guide](docs/UV_MIGRATION.md)
+- 🚀 **FastAPI**: New to FastAPI? Check the [FastAPI docs](https://fastapi.tiangolo.com/)
 - 🐛 **Issues**: Report bugs and feature requests via GitHub issues
 - 💬 **Discord**: Join the [Chatterbox TTS Discord](https://discord.gg/XqS7RxUp) or the [Discord for this project](http://chatterboxtts.com/discord)
 
 ---
 
-Made with ♥️ for the open source community
+Made with ♥️ and ⚡ FastAPI for the open source community

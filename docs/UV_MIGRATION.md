@@ -1,6 +1,6 @@
 # Migration Guide: From pip to uv
 
-This guide explains how to migrate the Chatterbox TTS API from pip to uv for better dependency management, faster installations, and improved PyTorch/CUDA compatibility.
+This guide explains how to migrate the Chatterbox TTS FastAPI from pip to uv for better dependency management, faster installations, and improved PyTorch/CUDA compatibility.
 
 ## Why Migrate to uv?
 
@@ -12,6 +12,16 @@ Based on user feedback and testing, uv provides several advantages for this proj
 4. **Git dependency support**: Better handling of `chatterbox-tts` from GitHub
 5. **Cross-platform consistency**: Environment markers handle CPU/GPU variants automatically
 6. **Docker optimizations**: Better caching and faster container builds
+7. **FastAPI compatibility**: Excellent support for FastAPI and Pydantic dependencies
+
+## FastAPI + uv Benefits
+
+The combination of FastAPI and uv provides:
+
+- **Faster builds**: uv resolves FastAPI dependencies more efficiently
+- **Better type checking**: Enhanced support for Pydantic and type hint libraries
+- **Cleaner environments**: More reliable async dependency management
+- **Development speed**: Faster dependency installation during development
 
 ## Docker GPU Issues (Fixed)
 
@@ -28,6 +38,7 @@ Based on user feedback and testing, uv provides several advantages for this proj
 2. **Direct Index Usage**: Use `uv pip install` with explicit `--index-url` flags
 3. **Simplified Configuration**: Removed complex pyproject.toml index configurations
 4. **Complete Dependencies**: Added `resemble-perth` for watermarker functionality
+5. **FastAPI Optimization**: Optimized for FastAPI and async dependencies
 
 **Fixed Commands**:
 
@@ -37,14 +48,14 @@ RUN uv venv --python 3.11 && \
     uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124 && \
     uv pip install resemble-perth && \
     uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git" && \
-    uv pip install flask>=2.3.0 python-dotenv>=1.0.0 requests>=2.28.0
+    uv pip install fastapi uvicorn[standard] python-dotenv requests
 
 # CPU version (Dockerfile.uv)
 RUN uv venv --python 3.11 && \
     uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu && \
     uv pip install resemble-perth && \
     uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git" && \
-    uv pip install flask>=2.3.0 python-dotenv>=1.0.0 requests>=2.28.0
+    uv pip install fastapi uvicorn[standard] python-dotenv requests
 ```
 
 **Common Error Fixed**:
@@ -61,6 +72,7 @@ This was caused by missing `resemble-perth` package that provides the watermarke
 - [ ] Backup your current `.venv` directory (if using virtual environments)
 - [ ] Note your current Python version (`python --version`)
 - [ ] Save current package versions (`pip freeze > backup-requirements.txt`)
+- [ ] Check if you're using the Flask or FastAPI version (this guide assumes FastAPI)
 
 ## Step 1: Install uv
 
@@ -103,10 +115,13 @@ pip install uv
    ```bash
    uv run python -c "import chatterbox; print('✓ chatterbox-tts installed')"
    uv run python -c "import torch; print(f'✓ PyTorch {torch.__version__} - CUDA: {torch.cuda.is_available()}')"
+   uv run python -c "import fastapi; print(f'✓ FastAPI {fastapi.__version__}')"
    ```
 
-4. **Run the API**:
+4. **Run the FastAPI server**:
    ```bash
+   uv run uvicorn api:app --host 0.0.0.0 --port 5123
+   # or
    uv run api.py
    ```
 
@@ -123,7 +138,9 @@ pip install uv
    uv add "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git"
    uv add "torch>=2.0.0,<2.7.0"
    uv add "torchaudio>=2.0.0,<2.7.0"
-   uv add "flask>=2.3.0"
+   uv add "fastapi>=0.104.0"
+   uv add "uvicorn[standard]>=0.24.0"
+   uv add "pydantic>=2.0.0"
    uv add "python-dotenv>=1.0.0"
    uv add "requests>=2.28.0" --optional dev
    ```
@@ -182,6 +199,13 @@ print(f'Status: {r.status_code}')
 print(r.json())
 "
 
+# Test FastAPI documentation
+uv run python -c "
+import requests
+r = requests.get('http://localhost:5123/docs')
+print(f'Docs available: {r.status_code == 200}')
+"
+
 # Test TTS generation
 uv run python test_api.py
 ```
@@ -205,6 +229,21 @@ time pip install -r requirements.txt
 | `pip install -r requirements.txt` | `uv sync`          |
 | `python script.py`                | `uv run script.py` |
 | `pip freeze`                      | `uv pip freeze`    |
+| `flask run --debug`               | N/A (now FastAPI)  |
+| `python api.py`                   | `uv run api.py`    |
+
+### FastAPI with uv commands:
+
+```bash
+# Start FastAPI development server
+uv run uvicorn api:app --host 0.0.0.0 --port 5123 --reload
+
+# Run with specific Python version
+uv run --python 3.11 uvicorn api:app --reload
+
+# Install development dependencies
+uv sync --extra dev
+```
 
 ### Environment management:
 
@@ -227,7 +266,7 @@ uv sync --extra dev
 
 ## Step 7: CI/CD Updates
 
-Update your CI/CD pipelines to use uv:
+Update your CI/CD pipelines to use uv with FastAPI:
 
 ```yaml
 # GitHub Actions example
@@ -239,6 +278,13 @@ Update your CI/CD pipelines to use uv:
 
 - name: Run tests
   run: uv run python test_api.py
+
+- name: Test FastAPI endpoints
+  run: |
+    uv run uvicorn api:app --host 0.0.0.0 --port 5123 &
+    sleep 10
+    curl -f http://localhost:5123/health
+    curl -f http://localhost:5123/docs
 ```
 
 ## Troubleshooting
@@ -269,10 +315,21 @@ Update your CI/CD pipelines to use uv:
    ```
 
 4. **Python version mismatch**:
+
    ```bash
    # Use specific Python version
    uv python install 3.11
    uv sync --python 3.11
+   ```
+
+5. **FastAPI startup issues**:
+
+   ```bash
+   # Check FastAPI dependencies
+   uv run python -c "import fastapi, uvicorn; print('FastAPI ready')"
+
+   # Run with verbose logging
+   uv run uvicorn api:app --log-level debug --reload
    ```
 
 ## Performance Benefits
@@ -284,6 +341,14 @@ Expected improvements after migration:
 - **Docker builds**: 20-30% faster with better caching
 - **Development workflow**: Faster environment creation
 - **PyTorch compatibility**: Better handling of CUDA variants
+- **FastAPI performance**: Better async dependency management
+
+## FastAPI + uv Specific Benefits
+
+- **Faster development cycles**: uv's speed + FastAPI's auto-reload
+- **Better type checking**: Enhanced IDE support for async functions
+- **Cleaner dependency trees**: uv resolves FastAPI/Pydantic dependencies better
+- **Improved testing**: Faster test environment setup
 
 ## Rollback Plan
 
@@ -306,17 +371,24 @@ If you need to rollback to pip:
    docker-compose -f docker-compose.yml up -d
    ```
 
+Note: If you're rolling back from FastAPI to Flask, you'll need to restore the previous Flask version of the codebase.
+
 ## Additional Resources
 
 - [uv Documentation](https://docs.astral.sh/uv/)
 - [PyTorch with uv Guide](https://docs.astral.sh/uv/guides/integration/pytorch/)
 - [uv Docker Guide](https://docs.astral.sh/uv/guides/integration/docker/)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [FastAPI Deployment Guide](https://fastapi.tiangolo.com/deployment/)
 
 ## Support
 
 If you encounter issues during migration:
 
 1. Check the [uv troubleshooting guide](https://docs.astral.sh/uv/reference/troubleshooting/)
-2. Open an issue with reproduction steps
-3. Include `uv.lock` and `pyproject.toml` files
-4. Provide error logs with `--verbose` flag
+2. Check the [FastAPI documentation](https://fastapi.tiangolo.com/tutorial/)
+3. Open an issue with reproduction steps
+4. Include `uv.lock` and `pyproject.toml` files
+5. Provide error logs with `--verbose` flag
+
+For FastAPI-specific issues, visit the interactive documentation at `http://localhost:5123/docs` once the server is running.

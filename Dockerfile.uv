@@ -21,15 +21,26 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 # Set working directory
 WORKDIR /app
 
+# Create virtual environment
+RUN uv venv --python 3.11
+
 # Install PyTorch with CPU support using uv
-RUN uv venv --python 3.11 && \
-    uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+RUN uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
 
-# Install setuptools and other dependencies using uv
-RUN uv pip install setuptools flask python-dotenv requests
+# Install base dependencies first
+RUN uv pip install fastapi uvicorn[standard] python-dotenv requests
 
-# Install chatterbox-tts using uv
-RUN uv pip install chatterbox-tts
+# Install resemble-perth specifically (required for watermarker)
+RUN uv pip install resemble-perth
+
+# Verify resemble-perth installation
+RUN . .venv/bin/activate && python -c "import perth; print('✓ resemble-perth installed successfully')"
+
+# Install chatterbox-tts after ensuring perth is available
+RUN uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git"
+
+# Verify full installation
+RUN . .venv/bin/activate && python -c "import chatterbox; import perth; print('✓ All dependencies installed successfully')"
 
 # Copy application code
 COPY api.py test_api.py ./
@@ -62,5 +73,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5m --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Run the application using the activated venv
-CMD ["python", "api.py"] 
+# Run the application using the activated venv with Uvicorn
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "5123"] 

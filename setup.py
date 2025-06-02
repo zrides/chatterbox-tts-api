@@ -30,6 +30,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Topic :: Multimedia :: Sound/Audio :: Speech",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Framework :: FastAPI",
     ],
     python_requires=">=3.11",
     install_requires=requirements,

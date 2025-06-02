@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy requirements and install other dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir flask python-dotenv requests chatterbox-tts
+RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv requests chatterbox-tts
 
 # Copy application code
 COPY api.py test_api.py ./
@@ -54,5 +54,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5m --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Run the application
-CMD ["python", "api.py"] 
+# Run the application with Uvicorn
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "5123"] 
