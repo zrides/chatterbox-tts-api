@@ -74,12 +74,7 @@ cp .env.example .env
 python api.py
 ```
 
-### 2. Docker (Recommended)*
-
-> [!NOTE]
-> \* `docker-compose.gpu.yml` should work — the `uv` version is being debugged at the moment.
-> 
-> The non-Docker use of `uv` is recommended, it's only the `Dockerfile.uv.gpu` that is causing issues.
+### 2. Docker (Recommended)
 
 ```bash
 # Clone and start with Docker Compose

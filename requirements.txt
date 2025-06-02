@@ -2,6 +2,9 @@
 #chatterbox-tts
 chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git
 
+# Required for Chatterbox TTS watermarker functionality
+resemble-perth
+
 # PyTorch with CPU support (ensure CPU compatibility)
 torch>=2.0.0,<2.7.0
 torchaudio>=2.0.0,<2.7.0

@@ -21,8 +21,17 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 # Set working directory
 WORKDIR /app
 
-# Copy project files
-COPY pyproject.toml uv.lock* ./
+# Install PyTorch with CPU support using uv
+RUN uv venv --python 3.11 && \
+    uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+
+# Install setuptools and other dependencies using uv
+RUN uv pip install setuptools flask python-dotenv requests
+
+# Install chatterbox-tts using uv
+RUN uv pip install chatterbox-tts
+
+# Copy application code
 COPY api.py test_api.py ./
 
 # Copy voice sample if it exists (optional, can be mounted)
@@ -30,9 +39,6 @@ COPY voice-sample.mp3 ./voice-sample.mp3
 
 # Create directory for model cache
 RUN mkdir -p /app/models
-
-# Install dependencies with uv (automatically creates venv and installs)
-RUN uv sync --frozen
 
 # Set default environment variables
 ENV PORT=5123
@@ -56,5 +62,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5m --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Run the application using uv
-CMD ["uv", "run", "api.py"] 
+# Run the application using the activated venv
+CMD ["python", "api.py"] 

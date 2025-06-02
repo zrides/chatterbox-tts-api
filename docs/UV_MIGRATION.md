@@ -13,6 +13,49 @@ Based on user feedback and testing, uv provides several advantages for this proj
 5. **Cross-platform consistency**: Environment markers handle CPU/GPU variants automatically
 6. **Docker optimizations**: Better caching and faster container builds
 
+## Docker GPU Issues (Fixed)
+
+**Previous Problem**: The original uv Docker implementations were failing because:
+
+1. **Missing CUDA Index**: `pyproject.toml` only defined CPU PyTorch indexes
+2. **Incorrect Configuration**: Assumed PyTorch would "auto-detect CUDA" (which doesn't work with uv)
+3. **Complex Index Logic**: Overly complicated platform markers that didn't work reliably
+4. **Missing Dependency**: `resemble-perth` watermarker dependency was not explicitly included
+
+**Solution Implemented**: The fixed uv Dockerfiles now:
+
+1. **Explicit PyTorch Installation**: Install PyTorch with correct CUDA/CPU versions first
+2. **Direct Index Usage**: Use `uv pip install` with explicit `--index-url` flags
+3. **Simplified Configuration**: Removed complex pyproject.toml index configurations
+4. **Complete Dependencies**: Added `resemble-perth` for watermarker functionality
+
+**Fixed Commands**:
+
+```dockerfile
+# GPU version (Dockerfile.uv.gpu)
+RUN uv venv --python 3.11 && \
+    uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124 && \
+    uv pip install resemble-perth && \
+    uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git" && \
+    uv pip install flask>=2.3.0 python-dotenv>=1.0.0 requests>=2.28.0
+
+# CPU version (Dockerfile.uv)
+RUN uv venv --python 3.11 && \
+    uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install resemble-perth && \
+    uv pip install "chatterbox-tts @ git+https://github.com/resemble-ai/chatterbox.git" && \
+    uv pip install flask>=2.3.0 python-dotenv>=1.0.0 requests>=2.28.0
+```
+
+**Common Error Fixed**:
+
+```
+TypeError: 'NoneType' object is not callable
+self.watermarker = perth.PerthImplicitWatermarker()
+```
+
+This was caused by missing `resemble-perth` package that provides the watermarker functionality.
+
 ## Pre-Migration Checklist
 
 - [ ] Backup your current `.venv` directory (if using virtual environments)
