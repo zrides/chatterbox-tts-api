@@ -28,6 +28,8 @@ REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), provid
 
 ### 1. Local Installation
 
+#### Option A: Using pip (Traditional)
+
 ```bash
 # Clone the repository
 git clone https://github.com/travisvn/chatterbox-tts-api
@@ -50,6 +52,28 @@ cp .env.example .env
 python api.py
 ```
 
+#### Option B: Using uv (Recommended - Faster & Better Dependencies)
+
+```bash
+# Clone the repository
+git clone https://github.com/travisvn/chatterbox-tts-api
+cd chatterbox-tts-api
+
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install dependencies with uv (automatically creates venv)
+uv sync
+
+# Copy and customize environment variables
+cp .env.example .env
+
+# Start the API
+uv run api.py
+```
+
+> 💡 **Why uv?** Users report better compatibility with `chatterbox-tts`, 25-40% faster installs, and superior dependency resolution. [See migration guide →](docs/UV_MIGRATION.md)
+
 ### 2. Docker (Recommended)
 
 ```bash
@@ -57,10 +81,13 @@ python api.py
 git clone https://github.com/travisvn/chatterbox-tts-api
 cd chatterbox-tts-api
 cp .env.example .env  # Customize as needed
-docker compose up -d
 
-# If you have nvidia/CUDA, you might have better luck with this
-docker compose -f docker-compose.gpu.yml up -d --build
+# Choose your deployment method:
+docker compose up -d                                    # Standard (pip-based)
+docker compose -f docker-compose.uv.yml up -d          # uv-optimized (faster builds)
+docker compose -f docker-compose.gpu.yml up -d         # Standard + GPU
+docker compose -f docker-compose.uv.gpu.yml up -d      # uv + GPU (recommended for GPU users)
+docker compose -f docker-compose.cpu.yml up -d         # CPU-only
 
 # Watch the logs as it initializes (the first use of TTS takes the longest)
 docker logs chatterbox-tts-api -f
@@ -209,7 +236,11 @@ docker compose up -d
 Run the test suite:
 
 ```bash
+# With pip/venv
 python test_api.py
+
+# With uv
+uv run test_api.py
 ```
 
 ## Performance
@@ -235,23 +266,34 @@ This happens because `chatterbox-tts` models require PyTorch with CUDA support, 
 # Option 1: Use default setup (now includes CUDA-enabled PyTorch (maybe))
 docker compose up -d
 
-# Option 2: Use explicit CUDA setup
+# Option 2: Use explicit CUDA setup (traditional)
 docker compose -f docker-compose.gpu.yml up -d
 
-# Option 3: Use CPU-only setup (may have compatibility issues)
+# Option 3: Use uv + GPU setup (recommended for GPU users)
+docker compose -f docker-compose.uv.gpu.yml up -d
+
+# Option 4: Use CPU-only setup (may have compatibility issues)
 docker compose -f docker-compose.cpu.yml up -d
 
-# Option 4: Clear model cache and retry with CUDA-enabled setup
+# Option 5: Clear model cache and retry with CUDA-enabled setup
 docker volume rm chatterbox-tts-api_chatterbox-models
 docker compose up -d --build
+
+# Option 6: Try uv for better dependency resolution
+uv sync
+uv run api.py
 ```
 
 **For local development**, install PyTorch with CUDA support:
 
 ```bash
+# With pip
 pip uninstall torch torchvision torchaudio
 pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu126
 pip install chatterbox-tts
+
+# With uv (handles this automatically)
+uv sync
 ```
 
 **Port conflicts**
@@ -280,7 +322,7 @@ echo "MAX_CHUNK_LENGTH=200" >> .env
 ```bash
 # Clear cache and retry
 rm -rf models/
-python api.py
+python api.py  # or: uv run api.py
 ```
 
 ## Development
@@ -288,19 +330,22 @@ python api.py
 ### Local Development
 
 ```bash
-# Install in development mode
+# Install in development mode (pip)
 pip install -e .
+
+# Or with uv
+uv sync --extra dev
 
 # Enable debug mode
 export FLASK_DEBUG=true
-python api.py
+python api.py  # or: uv run api.py
 ```
 
 ### Testing
 
 ```bash
 # Run API tests
-python test_api.py
+python test_api.py  # or: uv run test_api.py
 
 # Test specific endpoint
 curl http://localhost:5123/health
@@ -316,7 +361,8 @@ curl http://localhost:5123/health
 
 ## Support
 
-- 📖 **Documentation**: See [API_README.md](API_README.md) and [DOCKER_README.md](DOCKER_README.md)
+- 📖 **Documentation**: See [API Documentation](docs/API_README.md) and [Docker Guide](docs/DOCKER_README.md)
+- 🔄 **Migration**: Upgrading to uv? See the [uv Migration Guide](docs/UV_MIGRATION.md)
 - 🐛 **Issues**: Report bugs and feature requests via GitHub issues
 - 💬 **Discord**: Join the [Chatterbox TTS Discord](https://discord.gg/XqS7RxUp) or the [Discord for this project](https://readaloudai.com/discord)
 

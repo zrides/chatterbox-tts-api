@@ -14,10 +14,23 @@ This guide covers how to run the Chatterbox TTS API using Docker and Docker Comp
    cp .env.example .env  # Copy and customize environment variables
    ```
 
-2. **Start the service:**
+2. **Choose your Docker Compose variant:**
 
    ```bash
+   # Standard setup (pip-based, auto-detects device)
    docker compose up -d
+
+   # uv-optimized setup (faster builds, better dependencies)
+   docker compose -f docker-compose.uv.yml up -d
+
+   # GPU-optimized (traditional pip + NVIDIA GPU)
+   docker compose -f docker-compose.gpu.yml up -d
+
+   # uv + GPU optimized (fastest builds + NVIDIA GPU)
+   docker compose -f docker-compose.uv.gpu.yml up -d
+
+   # CPU-only (forced CPU, no GPU dependencies)
+   docker compose -f docker-compose.cpu.yml up -d
    ```
 
 3. **Test the API:**
@@ -27,6 +40,16 @@ This guide covers how to run the Chatterbox TTS API using Docker and Docker Comp
      -d '{"input": "Hello from Docker!"}' \
      --output test.wav
    ```
+
+### Docker Compose Variants
+
+| File                        | Description                           | Use Case                   |
+| --------------------------- | ------------------------------------- | -------------------------- |
+| `docker-compose.yml`        | Standard pip-based build, auto device | General use                |
+| `docker-compose.uv.yml`     | uv-optimized build, auto device       | Faster builds, better deps |
+| `docker-compose.gpu.yml`    | Standard build with GPU enabled       | NVIDIA GPU users           |
+| `docker-compose.uv.gpu.yml` | uv-optimized build with GPU enabled   | Best of both worlds        |
+| `docker-compose.cpu.yml`    | CPU-only build (no GPU dependencies)  | CPU-only environments      |
 
 ### Option 2: Docker Run
 
