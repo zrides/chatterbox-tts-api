@@ -12,7 +12,7 @@
 	<a href="https://github.com/travisvn/chatterbox-tts-api/issues">
 	  <img src="https://img.shields.io/github/issues/travisvn/chatterbox-tts-api" alt="GitHub issues"></a>
 	<img src="https://img.shields.io/github/last-commit/travisvn/chatterbox-tts-api?color=red" alt="GitHub last commit">
-  <a href="https://readaloudai.com/discord">
+  <a href="http://chatterboxtts.com/discord">
     <img src="https://img.shields.io/badge/Discord-Voice_AI_%26_TTS_Tools-blue?logo=discord&logoColor=white" alt="Discord">
   </a>
 </p>
