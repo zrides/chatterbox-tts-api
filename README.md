@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOU3Yg3Hv5z4Yp5KyrgwGHF6E9nbaq7mZCs8jfk" alt="Chatterbox API TTS header">
+</p>
+
 # Chatterbox TTS API
 
 <p align="center">
