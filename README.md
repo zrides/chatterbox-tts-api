@@ -53,9 +53,9 @@ uv sync
 cp .env.example .env
 
 # Start the API with FastAPI
-uv run uvicorn api:app --host 0.0.0.0 --port 5123
+uv run uvicorn app.main:app --host 0.0.0.0 --port 5123
 # Or use the main script
-uv run api.py
+uv run main.py
 ```
 
 > 💡 **Why uv?** Users report better compatibility with `chatterbox-tts`, 25-40% faster installs, and superior dependency resolution. [See migration guide →](docs/UV_MIGRATION.md)
@@ -81,9 +81,9 @@ cp .env.example .env
 # cp your-voice.mp3 voice-sample.mp3
 
 # Start the API with FastAPI
-uvicorn api:app --host 0.0.0.0 --port 5123
+uvicorn app.main:app --host 0.0.0.0 --port 5123
 # Or use the main script
-python api.py
+python main.py
 ```
 
 ### 2. Docker (Recommended)
@@ -170,7 +170,7 @@ with open("output.wav", "wb") as f:
 The project provides two environment example files:
 
 - **`.env.example`** - For local development (uses `./models`, `./voice-sample.mp3`)
-- **`.env.example.docker`** - For Docker deployment (uses `/app/models`, `/app/voice-sample.mp3`)
+- **`.env.example.docker`** - For Docker deployment (uses `/cache`, `/app/voice-sample.mp3`)
 
 Choose the appropriate one for your setup:
 
@@ -322,7 +322,7 @@ Run the memory management test suite:
 
 ```bash
 # Test memory patterns and cleanup
-python test_memory.py  # or: uv run test_memory.py
+python tests/test_memory.py  # or: uv run tests/test_memory.py
 
 # Monitor memory during testing
 watch -n 1 'curl -s http://localhost:5123/memory | jq .memory_info'
@@ -360,23 +360,21 @@ ENABLE_MEMORY_MONITORING=true
 <details>
 <summary><strong>🧪 Testing</strong></summary>
 
-Run the test suite:
+Run the test script to verify the API functionality:
 
 ```bash
-# With pip/venv
-python test_api.py
-
-# With uv
-uv run test_api.py
+python tests/test_api.py
 ```
 
-The test suite now includes:
+The test script will:
 
-- Basic endpoint testing
-- FastAPI documentation availability
-- Custom parameter validation
-- Error handling verification
-- Performance benchmarking
+- Test health check endpoint
+- Test models endpoint
+- Test API documentation endpoints (new!)
+- Generate speech for various text lengths
+- Test custom parameter validation
+- Test error handling with validation
+- Save generated audio files as `test_output_*.wav`
 
 </details>
 
@@ -472,7 +470,7 @@ echo "MAX_CHUNK_LENGTH=200" >> .env
 ```bash
 # Clear cache and retry
 rm -rf models/
-uvicorn api:app --host 0.0.0.0 --port 5123  # or: uv run api.py
+uvicorn app.main:app --host 0.0.0.0 --port 5123  # or: uv run main.py
 ```
 
 **FastAPI startup issues**
@@ -482,10 +480,10 @@ uvicorn api:app --host 0.0.0.0 --port 5123  # or: uv run api.py
 uvicorn --version
 
 # Run with verbose logging
-uvicorn api:app --host 0.0.0.0 --port 5123 --log-level debug
+uvicorn app.main:app --host 0.0.0.0 --port 5123 --log-level debug
 
 # Alternative startup method
-python api.py
+python main.py
 ```
 
 </details>
