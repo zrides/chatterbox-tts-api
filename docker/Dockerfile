@@ -27,13 +27,15 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv requests psutil chatterbox-tts
 
 # Copy application code
-COPY api.py test_api.py ./
+COPY app/ ./app/
+COPY main.py ./
+COPY tests/ ./tests/
 
 # Copy voice sample if it exists (optional, can be mounted)
 COPY voice-sample.mp3 ./voice-sample.mp3
 
-# Create directory for model cache
-RUN mkdir -p /app/models
+# Create directory for model cache (separate from source code)
+RUN mkdir -p /cache
 
 # Set default environment variables
 ENV PORT=5123
@@ -44,7 +46,7 @@ ENV VOICE_SAMPLE_PATH=/app/voice-sample.mp3
 ENV MAX_CHUNK_LENGTH=280
 ENV MAX_TOTAL_LENGTH=3000
 ENV DEVICE=auto
-ENV MODEL_CACHE_DIR=/app/models
+ENV MODEL_CACHE_DIR=/cache
 ENV HOST=0.0.0.0
 
 # Expose port
@@ -54,5 +56,5 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5m --retries=3 \
     CMD curl -f http://localhost:${PORT}/health || exit 1
 
-# Run the application with Uvicorn
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "5123"] 
+# Run the application with the new entry point
+CMD ["python", "main.py"] 

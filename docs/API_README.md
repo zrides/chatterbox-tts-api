@@ -60,13 +60,13 @@ Start the API server:
 
 ```bash
 # Method 1: Direct uvicorn (recommended for development)
-uvicorn api:app --host 0.0.0.0 --port 5123
+uvicorn app.main:app --host 0.0.0.0 --port 5123
 
 # Method 2: Using the main script
-python api.py
+python main.py
 
 # Method 3: With auto-reload for development
-uvicorn api:app --host 0.0.0.0 --port 5123 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 5123 --reload
 ```
 
 The server will:
@@ -273,7 +273,7 @@ FastAPI provides enhanced error handling with automatic validation:
 Use the enhanced test script to verify the API functionality:
 
 ```bash
-python test_api.py
+python tests/test_api.py
 ```
 
 The test script will:
@@ -455,10 +455,10 @@ curl http://localhost:5123/docs
 
 ```bash
 # Start with auto-reload
-uvicorn api:app --host 0.0.0.0 --port 5123 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 5123 --reload
 
 # Or with verbose logging
-uvicorn api:app --host 0.0.0.0 --port 5123 --log-level debug
+uvicorn app.main:app --host 0.0.0.0 --port 5123 --log-level debug
 ```
 
 ## Troubleshooting
@@ -481,10 +481,10 @@ uvicorn api:app --host 0.0.0.0 --port 5123 --log-level debug
 uvicorn --version
 
 # Run with verbose logging
-uvicorn api:app --host 0.0.0.0 --port 5123 --log-level debug
+uvicorn app.main:app --host 0.0.0.0 --port 5123 --log-level debug
 
 # Alternative startup method
-python api.py
+python main.py
 ```
 
 **Validation Errors:**
@@ -515,7 +515,7 @@ curl -X POST http://localhost:5123/v1/audio/speech \
 If you're migrating from the previous Flask version:
 
 1. **Dependencies**: Update to `fastapi` and `uvicorn` instead of `flask`
-2. **Startup**: Use `uvicorn api:app` instead of `python api.py`
+2. **Startup**: Use `uvicorn app.main:app` instead of `python api.py`
 3. **Documentation**: Visit `/docs` for interactive API testing
 4. **Validation**: Error responses now use HTTP 422 for validation errors
 5. **Performance**: Expect 25-40% better performance for JSON responses

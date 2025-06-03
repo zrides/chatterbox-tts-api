@@ -98,11 +98,11 @@ cp .env.example.docker .env  # Docker-specific paths, ready to use
 # Or: cp .env.example .env    # Local development paths, needs customization
 
 # Choose your deployment method:
-docker compose up -d                                    # Standard (pip-based)
-docker compose -f docker-compose.uv.yml up -d          # uv-optimized (faster builds)
-docker compose -f docker-compose.gpu.yml up -d         # Standard + GPU
-docker compose -f docker-compose.uv.gpu.yml up -d      # uv + GPU (recommended for GPU users)
-docker compose -f docker-compose.cpu.yml up -d         # CPU-only
+docker compose -f docker/docker-compose.yml up -d             # Standard (pip-based)
+docker compose -f docker/docker-compose.uv.yml up -d          # uv-optimized (faster builds)
+docker compose -f docker/docker-compose.gpu.yml up -d         # Standard + GPU
+docker compose -f docker/docker-compose.uv.gpu.yml up -d      # uv + GPU (recommended for GPU users)
+docker compose -f docker/docker-compose.cpu.yml up -d         # CPU-only
 
 # Watch the logs as it initializes (the first use of TTS takes the longest)
 docker logs chatterbox-tts-api -f
@@ -220,26 +220,26 @@ For best results:
 ### Development
 
 ```bash
-docker compose up
+docker compose -f docker/docker-compose.yml up
 ```
 
 ### Production
 
 ```bash
 # Create production environment
-cp .env.example .env
+cp .env.example.docker .env
 nano .env  # Set production values
 
 # Deploy
-docker compose -f docker-compose.yml up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 ### With GPU Support
 
 ```bash
-# Enable GPU section in docker-compose.yml
+# Use GPU-enabled compose file
 # Ensure NVIDIA Container Toolkit is installed
-docker compose up -d
+docker compose -f docker/docker-compose.gpu.yml up -d
 ```
 
 </details>
@@ -414,24 +414,24 @@ This happens because `chatterbox-tts` models require PyTorch with CUDA support, 
 
 ```bash
 # Option 1: Use default setup (now includes CUDA-enabled PyTorch)
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 
 # Option 2: Use explicit CUDA setup (traditional)
-docker compose -f docker-compose.gpu.yml up -d
+docker compose -f docker/docker-compose.gpu.yml up -d
 
 # Option 3: Use uv + GPU setup (recommended for GPU users)
-docker compose -f docker-compose.uv.gpu.yml up -d
+docker compose -f docker/docker-compose.uv.gpu.yml up -d
 
 # Option 4: Use CPU-only setup (may have compatibility issues)
-docker compose -f docker-compose.cpu.yml up -d
+docker compose -f docker/docker-compose.cpu.yml up -d
 
 # Option 5: Clear model cache and retry with CUDA-enabled setup
 docker volume rm chatterbox-tts-api_chatterbox-models
-docker compose up -d --build
+docker compose -f docker/docker-compose.yml up -d --build
 
 # Option 6: Try uv for better dependency resolution
 uv sync
-uv run uvicorn api:app --host 0.0.0.0 --port 5123
+uv run uvicorn app.main:app --host 0.0.0.0 --port 5123
 ```
 
 **For local development**, install PyTorch with CUDA support:
@@ -493,6 +493,67 @@ python api.py
 <details>
 <summary><strong>💻 Development</strong></summary>
 
+### Project Structure
+
+This project follows a clean, modular architecture for maintainability:
+
+```
+app/
+├── __init__.py           # Main package
+├── config.py            # Configuration management
+├── main.py              # FastAPI application
+├── models/              # Pydantic models
+│   ├── requests.py      # Request models
+│   └── responses.py     # Response models
+├── core/                # Core functionality
+│   ├── memory.py        # Memory management
+│   ├── text_processing.py # Text processing utilities
+│   └── tts_model.py     # TTS model management
+└── api/                 # API endpoints
+    ├── router.py        # Main router
+    └── endpoints/       # Individual endpoint modules
+        ├── speech.py    # TTS endpoint
+        ├── health.py    # Health check
+        ├── models.py    # Model listing
+        ├── memory.py    # Memory management
+        └── config.py    # Configuration
+
+docker/                  # Docker files consolidated
+├── Dockerfile          # Standard Docker image
+├── Dockerfile.uv       # uv-optimized image
+├── Dockerfile.gpu      # GPU-enabled image
+├── Dockerfile.cpu      # CPU-only image
+├── Dockerfile.uv.gpu   # uv + GPU image
+├── docker-compose.yml  # Standard deployment
+├── docker-compose.uv.yml # uv deployment
+├── docker-compose.gpu.yml # GPU deployment
+├── docker-compose.uv.gpu.yml # uv + GPU deployment
+└── docker-compose.cpu.yml # CPU-only deployment
+
+tests/                   # Test suite
+├── test_api.py         # API tests
+└── test_memory.py      # Memory tests
+
+main.py                  # Main entry point
+start.py                 # Development helper script
+```
+
+### Quick Start Scripts
+
+```bash
+# Development mode with auto-reload
+python start.py dev
+
+# Production mode
+python start.py prod
+
+# Run tests
+python start.py test
+
+# View project structure
+python start.py info
+```
+
 ### Local Development
 
 ```bash
@@ -503,17 +564,23 @@ pip install -e .
 uv sync --extra dev
 
 # Start with auto-reload (FastAPI development)
-uvicorn api:app --host 0.0.0.0 --port 5123 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 5123 --reload
 
 # Or use the main script
-python api.py
+python main.py
+
+# Or use the development helper
+python start.py dev
 ```
 
 ### Testing
 
 ```bash
 # Run API tests
-python test_api.py  # or: uv run test_api.py
+python tests/test_api.py  # or: uv run tests/test_api.py
+
+# Run memory tests
+python tests/test_memory.py
 
 # Test specific endpoint
 curl http://localhost:5123/health
@@ -528,6 +595,7 @@ curl http://localhost:5123/openapi.json
 - **Interactive docs**: Visit `/docs` for live API testing
 - **Type hints**: Full IDE support with Pydantic models
 - **Validation**: Automatic request/response validation
+- **Modular structure**: Easy to extend and maintain
 
 </details>
 

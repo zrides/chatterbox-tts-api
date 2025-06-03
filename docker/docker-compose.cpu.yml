@@ -2,8 +2,10 @@ version: '3.8'
 
 services:
   chatterbox-tts:
-    build: .
-    container_name: chatterbox-tts-api
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.cpu
+    container_name: chatterbox-tts-api-cpu
     ports:
       - '${PORT:-5123}:${PORT:-5123}'
     environment:
@@ -22,30 +24,22 @@ services:
 
       # Voice and Model Settings
       - VOICE_SAMPLE_PATH=/app/voice-sample.mp3
-      - DEVICE=${DEVICE:-auto}
-      - MODEL_CACHE_DIR=${MODEL_CACHE_DIR:-/app/models}
+      - DEVICE=cpu
+      - MODEL_CACHE_DIR=/cache
 
       # Flask Settings
       - FLASK_ENV=${FLASK_ENV:-production}
       - FLASK_DEBUG=${FLASK_DEBUG:-false}
+
     volumes:
       # Mount voice sample file (optional)
-      - ${VOICE_SAMPLE_HOST_PATH:-./voice-sample.mp3}:/app/voice-sample.mp3:ro
+      - ${VOICE_SAMPLE_HOST_PATH:-../voice-sample.mp3}:/app/voice-sample.mp3:ro
 
       # Mount model cache for persistence
-      - chatterbox-models:${MODEL_CACHE_DIR:-/app/models}
+      - chatterbox-models:/cache
 
       # Optional: Mount custom voice samples directory
-      - ${VOICE_SAMPLES_DIR:-./voice-samples}:/app/voice-samples:ro
-
-    # GPU support (uncomment if you have NVIDIA GPU)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
+      - ${VOICE_SAMPLES_DIR:-../voice-samples}:/app/voice-samples:ro
 
     restart: unless-stopped
 

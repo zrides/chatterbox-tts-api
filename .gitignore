@@ -42,7 +42,6 @@ instance/
 *.pt
 
 # Models and cache
-models/
 .cache/
 .torch/
 

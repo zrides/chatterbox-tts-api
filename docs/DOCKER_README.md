@@ -78,7 +78,7 @@ docker run -d \
   --name chatterbox-tts-api \
   -p 5123:5123 \
   -v ./voice-sample.mp3:/app/voice-sample.mp3:ro \
-  -v chatterbox-models:/app/models \
+  -v chatterbox-models:/cache \
   -e EXAGGERATION=0.7 \
   -e CFG_WEIGHT=0.4 \
   chatterbox-tts-api
@@ -114,7 +114,7 @@ Then enable the GPU section in the appropriate `docker-compose.yml`.
 
 The project provides two environment example files:
 
-- **`.env.example.docker`** - Pre-configured for Docker with container paths (`/app/models`, `/app/voice-sample.mp3`)
+- **`.env.example.docker`** - Pre-configured for Docker with container paths (`/cache`, `/app/voice-sample.mp3`)
 - **`.env.example`** - Configured for local development with relative paths (`./models`, `./voice-sample.mp3`)
 
 For Docker deployment, use the Docker-specific version:
@@ -214,7 +214,7 @@ services:
       - EXAGGERATION=0.7
     volumes:
       - .:/app
-      - chatterbox-models:/app/models
+      - chatterbox-models:/cache
     command: uvicorn api:app --host=0.0.0.0 --port=5123 --reload
 ```
 
@@ -237,7 +237,7 @@ services:
       - CFG_WEIGHT=0.5
     volumes:
       - ./voice-sample.mp3:/app/voice-sample.mp3:ro
-      - chatterbox-models:/app/models
+      - chatterbox-models:/cache
     deploy:
       resources:
         limits:
@@ -476,7 +476,7 @@ docker run -d --name haproxy \
 
 ```bash
 # Run test suite
-docker compose exec chatterbox-tts python test_api.py
+docker compose exec chatterbox-tts python tests/test_api.py
 
 # Test FastAPI specific features
 docker compose exec chatterbox-tts python -c "
@@ -569,8 +569,8 @@ If you're upgrading from the Flask version:
 
 1. **Startup Command**:
 
-   - Old: `CMD ["python", "api.py"]`
-   - New: `CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "5123"]`
+   - Current: `CMD ["python", "main.py"]` (FastAPI with uvicorn)
+   - Previous: `CMD ["python", "api.py"]` (Flask)
 
 2. **Dependencies**:
 

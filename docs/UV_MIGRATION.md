@@ -120,9 +120,9 @@ pip install uv
 
 4. **Run the FastAPI server**:
    ```bash
-   uv run uvicorn api:app --host 0.0.0.0 --port 5123
+   uv run uvicorn app.main:app --host 0.0.0.0 --port 5123
    # or
-   uv run api.py
+   uv run main.py
    ```
 
 ### Option B: Manual Migration
@@ -207,7 +207,7 @@ print(f'Docs available: {r.status_code == 200}')
 "
 
 # Test TTS generation
-uv run python test_api.py
+uv run python tests/test_api.py
 ```
 
 ### Performance comparison:
@@ -230,16 +230,16 @@ time pip install -r requirements.txt
 | `python script.py`                | `uv run script.py` |
 | `pip freeze`                      | `uv pip freeze`    |
 | `flask run --debug`               | N/A (now FastAPI)  |
-| `python api.py`                   | `uv run api.py`    |
+| `python main.py`                  | `uv run main.py`   |
 
 ### FastAPI with uv commands:
 
 ```bash
 # Start FastAPI development server
-uv run uvicorn api:app --host 0.0.0.0 --port 5123 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 5123 --reload
 
 # Run with specific Python version
-uv run --python 3.11 uvicorn api:app --reload
+uv run --python 3.11 uvicorn app.main:app --reload
 
 # Install development dependencies
 uv sync --extra dev
@@ -277,7 +277,7 @@ Update your CI/CD pipelines to use uv with FastAPI:
   run: uv sync
 
 - name: Run tests
-  run: uv run python test_api.py
+  run: uv run python tests/test_api.py
 
 - name: Test FastAPI endpoints
   run: |
