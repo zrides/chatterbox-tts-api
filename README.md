@@ -35,7 +35,7 @@
 
 ## Quick Start
 
-### 1. Local Installation
+### Local Installation
 
 #### Option A: Using uv (Recommended - Faster & Better Dependencies)
 
@@ -87,35 +87,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 5123
 python main.py
 ```
 
-### 2. Docker Hub (Recommended - Fastest Start)
-
-```bash
-# Quick start with default settings
-docker run -d \
-  --name chatterbox-tts \
-  -p 5123:5123 \
-  -v ./voice-sample.mp3:/app/voice-sample.mp3:ro \
-  -v chatterbox-models:/cache \
-  travisvn/chatterbox-tts-api:latest
-
-# Test the API immediately
-curl -X POST http://localhost:5123/v1/audio/speech \
-  -F "input=Hello from Docker Hub!" \
-  --output test.wav
-
-# View API documentation
-open http://localhost:5123/docs
-```
-
-**Docker Hub Images Available:**
-
-- `travisvn/chatterbox-tts-api:latest` - CUDA-compatible (recommended)
-- `travisvn/chatterbox-tts-api:cpu` - CPU-only (smaller download)
-- `travisvn/chatterbox-tts-api:gpu` - GPU-optimized
-
-> 📚 **Full Docker Hub Guide**: See [Docker Hub Usage Guide](docs/DOCKER_HUB_GUIDE.md) for complete setup options, GPU support, and advanced configurations.
-
-### 3. Docker (Build from Source)
+### Docker (Recommended)
 
 ```bash
 # Clone and start with Docker Compose
@@ -142,15 +114,6 @@ curl -X POST http://localhost:5123/v1/audio/speech \
   -d '{"input": "Hello from Chatterbox TTS!"}' \
   --output test.wav
 ```
-
-### 3. Explore the API
-
-Once running, visit:
-
-- **Interactive API Docs**: http://localhost:5123/docs (Swagger UI)
-- **Alternative Docs**: http://localhost:5123/redoc (ReDoc)
-- **OpenAPI Schema**: http://localhost:5123/openapi.json
-- **Memory Monitoring**: http://localhost:5123/memory (Memory usage stats)
 
 ## API Usage
 
@@ -725,4 +688,4 @@ curl http://localhost:5123/openapi.json
 
 ---
 
-Made with ♥️ and ⚡ FastAPI for the open source community
+Made with ♥️ for the open source community
