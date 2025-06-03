@@ -23,13 +23,13 @@ jobs:
             dockerfile: docker/Dockerfile.dockerhub
             platforms: linux/amd64,linux/arm64
             tags: |
-              ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-              ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:gpu
+              travisvn/chatterbox-tts-api:latest
+              travisvn/chatterbox-tts-api:gpu
           - name: cpu
             dockerfile: docker/Dockerfile.dockerhub.cpu
             platforms: linux/amd64,linux/arm64
             tags: |
-              ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:cpu
+              travisvn/chatterbox-tts-api:cpu
 
     steps:
       - name: Checkout
