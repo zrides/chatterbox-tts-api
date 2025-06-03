@@ -24,6 +24,7 @@
 🚀 **OpenAI-Compatible API** - Drop-in replacement for OpenAI's TTS API  
 ⚡ **FastAPI Performance** - High-performance async API with automatic documentation  
 🎭 **Voice Cloning** - Use your own voice samples for personalized speech  
+🎤 **Voice Upload** - Upload custom voice files per request or use configured default  
 📝 **Smart Text Processing** - Automatic chunking for long texts  
 🐳 **Docker Ready** - Full containerization support  
 ⚙️ **Configurable** - Extensive environment variable configuration  
@@ -125,7 +126,7 @@ Once running, visit:
 
 ## API Usage
 
-### Basic Text-to-Speech
+### Basic Text-to-Speech (Default Voice)
 
 ```bash
 curl -X POST http://localhost:5123/v1/audio/speech \
@@ -134,36 +135,113 @@ curl -X POST http://localhost:5123/v1/audio/speech \
   --output speech.wav
 ```
 
+### Using Form Data (Recommended for Voice Upload)
+
+```bash
+curl -X POST http://localhost:5123/v1/audio/speech \
+  -F "input=Hello world!" \
+  -F "exaggeration=0.7" \
+  --output speech.wav
+```
+
+### Custom Voice Upload
+
+Upload your own voice sample for personalized speech:
+
+```bash
+curl -X POST http://localhost:5123/v1/audio/speech \
+  -F "input=Hello with my custom voice!" \
+  -F "exaggeration=0.8" \
+  -F "voice_file=@my_voice.mp3" \
+  --output custom_voice_speech.wav
+```
+
 ### With Custom Parameters
 
 ```bash
 curl -X POST http://localhost:5123/v1/audio/speech \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input": "Dramatic speech!",
-    "exaggeration": 1.2,
-    "cfg_weight": 0.3,
-    "temperature": 0.9
-  }' \
+  -F "input=Dramatic speech!" \
+  -F "exaggeration=1.2" \
+  -F "cfg_weight=0.3" \
+  -F "temperature=0.9" \
+  -F "voice_file=@dramatic_voice.wav" \
   --output dramatic.wav
 ```
 
-### Python Example
+### Python Examples
+
+#### Default Voice (JSON)
 
 ```python
 import requests
 
 response = requests.post(
-    "http://localhost:5123/v1/audio/speech",
+    "http://localhost:5123/v1/audio/speech/json",
     json={
         "input": "Hello world!",
-        "exaggeration": 0.8  # More expressive
+        "exaggeration": 0.8
     }
 )
 
 with open("output.wav", "wb") as f:
     f.write(response.content)
 ```
+
+#### Default Voice (Form Data)
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:5123/v1/audio/speech",
+    data={
+        "input": "Hello world!",
+        "exaggeration": 0.8
+    }
+)
+
+with open("output.wav", "wb") as f:
+    f.write(response.content)
+```
+
+#### Custom Voice Upload
+
+```python
+import requests
+
+with open("my_voice.mp3", "rb") as voice_file:
+    response = requests.post(
+        "http://localhost:5123/v1/audio/speech",
+        data={
+            "input": "Hello with my custom voice!",
+            "exaggeration": 0.8,
+            "temperature": 1.0
+        },
+        files={
+            "voice_file": ("my_voice.mp3", voice_file, "audio/mpeg")
+        }
+    )
+
+with open("custom_output.wav", "wb") as f:
+    f.write(response.content)
+```
+
+### Voice File Requirements
+
+**Supported Formats:**
+
+- MP3 (.mp3)
+- WAV (.wav)
+- FLAC (.flac)
+- M4A (.m4a)
+- OGG (.ogg)
+
+**Requirements:**
+
+- Maximum file size: 10MB
+- Recommended duration: 10-30 seconds of clear speech
+- Avoid background noise for best results
+- Higher quality audio produces better voice cloning
 
 ## Configuration
 

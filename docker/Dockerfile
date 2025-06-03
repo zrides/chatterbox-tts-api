@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy requirements and install other dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv requests psutil chatterbox-tts
+RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv python-multipart requests psutil chatterbox-tts
 
 # Copy application code
 COPY app/ ./app/
