@@ -87,7 +87,35 @@ uvicorn app.main:app --host 0.0.0.0 --port 5123
 python main.py
 ```
 
-### 2. Docker (Recommended)
+### 2. Docker Hub (Recommended - Fastest Start)
+
+```bash
+# Quick start with default settings
+docker run -d \
+  --name chatterbox-tts \
+  -p 5123:5123 \
+  -v ./voice-sample.mp3:/app/voice-sample.mp3:ro \
+  -v chatterbox-models:/cache \
+  travisvn/chatterbox-tts-api:latest
+
+# Test the API immediately
+curl -X POST http://localhost:5123/v1/audio/speech \
+  -F "input=Hello from Docker Hub!" \
+  --output test.wav
+
+# View API documentation
+open http://localhost:5123/docs
+```
+
+**Docker Hub Images Available:**
+
+- `travisvn/chatterbox-tts-api:latest` - CUDA-compatible (recommended)
+- `travisvn/chatterbox-tts-api:cpu` - CPU-only (smaller download)
+- `travisvn/chatterbox-tts-api:gpu` - GPU-optimized
+
+> 📚 **Full Docker Hub Guide**: See [Docker Hub Usage Guide](docs/DOCKER_HUB_GUIDE.md) for complete setup options, GPU support, and advanced configurations.
+
+### 3. Docker (Build from Source)
 
 ```bash
 # Clone and start with Docker Compose
@@ -135,13 +163,13 @@ curl -X POST http://localhost:5123/v1/audio/speech \
   --output speech.wav
 ```
 
-### Using Form Data (Recommended for Voice Upload)
+### Using Custom Parameters (JSON)
 
 ```bash
 curl -X POST http://localhost:5123/v1/audio/speech \
-  -F "input=Hello world!" \
-  -F "exaggeration=0.7" \
-  --output speech.wav
+  -H "Content-Type: application/json" \
+  -d '{"input": "Dramatic speech!", "exaggeration": 1.2, "cfg_weight": 0.3, "temperature": 0.9}' \
+  --output dramatic.wav
 ```
 
 ### Custom Voice Upload
@@ -149,17 +177,17 @@ curl -X POST http://localhost:5123/v1/audio/speech \
 Upload your own voice sample for personalized speech:
 
 ```bash
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:5123/v1/audio/speech/upload \
   -F "input=Hello with my custom voice!" \
   -F "exaggeration=0.8" \
   -F "voice_file=@my_voice.mp3" \
   --output custom_voice_speech.wav
 ```
 
-### With Custom Parameters
+### With Custom Parameters and Voice Upload
 
 ```bash
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:5123/v1/audio/speech/upload \
   -F "input=Dramatic speech!" \
   -F "exaggeration=1.2" \
   -F "cfg_weight=0.3" \
@@ -176,7 +204,7 @@ curl -X POST http://localhost:5123/v1/audio/speech \
 import requests
 
 response = requests.post(
-    "http://localhost:5123/v1/audio/speech/json",
+    "http://localhost:5123/v1/audio/speech",
     json={
         "input": "Hello world!",
         "exaggeration": 0.8
@@ -187,13 +215,13 @@ with open("output.wav", "wb") as f:
     f.write(response.content)
 ```
 
-#### Default Voice (Form Data)
+#### Upload Endpoint (Default Voice)
 
 ```python
 import requests
 
 response = requests.post(
-    "http://localhost:5123/v1/audio/speech",
+    "http://localhost:5123/v1/audio/speech/upload",
     data={
         "input": "Hello world!",
         "exaggeration": 0.8
@@ -211,7 +239,7 @@ import requests
 
 with open("my_voice.mp3", "rb") as voice_file:
     response = requests.post(
-        "http://localhost:5123/v1/audio/speech",
+        "http://localhost:5123/v1/audio/speech/upload",
         data={
             "input": "Hello with my custom voice!",
             "exaggeration": 0.8,

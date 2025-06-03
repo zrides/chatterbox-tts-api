@@ -81,7 +81,7 @@ def test_api_docs():
         return False
 
 def test_text_to_speech_json(text, output_filename, custom_params=None):
-    """Test the legacy JSON text-to-speech endpoint"""
+    """Test the main JSON text-to-speech endpoint"""
     print(f"\nTesting TTS JSON endpoint with text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
     
     payload = {
@@ -99,7 +99,7 @@ def test_text_to_speech_json(text, output_filename, custom_params=None):
     try:
         start_time = time.time()
         response = requests.post(
-            f"{API_BASE_URL}/v1/audio/speech/json",
+            f"{API_BASE_URL}/v1/audio/speech",
             json=payload,
             headers={"Content-Type": "application/json"}
         )
@@ -131,9 +131,9 @@ def test_text_to_speech_json(text, output_filename, custom_params=None):
         print(f"✗ TTS JSON generation failed with error: {e}")
         return False
 
-def test_text_to_speech_form(text, output_filename, custom_params=None):
-    """Test the new form data text-to-speech endpoint"""
-    print(f"\nTesting TTS form data endpoint with text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
+def test_text_to_speech_upload(text, output_filename, custom_params=None):
+    """Test the upload endpoint (form data, no file)"""
+    print(f"\nTesting TTS upload endpoint with text: '{text[:50]}{'...' if len(text) > 50 else ''}'")
     
     data = {
         "input": text,
@@ -150,7 +150,7 @@ def test_text_to_speech_form(text, output_filename, custom_params=None):
     try:
         start_time = time.time()
         response = requests.post(
-            f"{API_BASE_URL}/v1/audio/speech",
+            f"{API_BASE_URL}/v1/audio/speech/upload",
             data=data
         )
         end_time = time.time()
@@ -163,13 +163,13 @@ def test_text_to_speech_form(text, output_filename, custom_params=None):
             file_size = len(response.content)
             duration = end_time - start_time
             
-            print(f"✓ TTS form data generation successful!")
+            print(f"✓ TTS upload generation successful!")
             print(f"  - Duration: {duration:.2f} seconds")
             print(f"  - File size: {file_size:,} bytes")
             print(f"  - Output saved to: {output_filename}")
             return True
         else:
-            print(f"✗ TTS form data generation failed with status {response.status_code}")
+            print(f"✗ TTS upload generation failed with status {response.status_code}")
             try:
                 error_data = response.json()
                 print(f"  Error: {error_data}")
@@ -178,7 +178,7 @@ def test_text_to_speech_form(text, output_filename, custom_params=None):
             return False
             
     except Exception as e:
-        print(f"✗ TTS form data generation failed with error: {e}")
+        print(f"✗ TTS upload generation failed with error: {e}")
         return False
 
 def test_error_handling():
@@ -188,7 +188,7 @@ def test_error_handling():
     # Test missing input field (JSON endpoint)
     try:
         response = requests.post(
-            f"{API_BASE_URL}/v1/audio/speech/json",
+            f"{API_BASE_URL}/v1/audio/speech",
             json={"voice": "alloy"},
             headers={"Content-Type": "application/json"}
         )
@@ -200,62 +200,76 @@ def test_error_handling():
     except Exception as e:
         print(f"✗ Error testing missing input (JSON): {e}")
     
-    # Test missing input field (form data endpoint)
+    # Test missing input field (upload endpoint)
     try:
         response = requests.post(
-            f"{API_BASE_URL}/v1/audio/speech",
+            f"{API_BASE_URL}/v1/audio/speech/upload",
             data={"voice": "alloy"}
         )
         if response.status_code == 422:  # FastAPI uses 422 for validation errors
-            print("✓ Missing input field error handled correctly (form data)")
+            print("✓ Missing input field error handled correctly (upload)")
         else:
-            print(f"✗ Expected 422 for missing input (form data), got {response.status_code}")
+            print(f"✗ Expected 422 for missing input (upload), got {response.status_code}")
             print(f"  Response: {response.text}")
     except Exception as e:
-        print(f"✗ Error testing missing input (form data): {e}")
+        print(f"✗ Error testing missing input (upload): {e}")
     
-    # Test empty input
+    # Test empty input (JSON)
     try:
         response = requests.post(
             f"{API_BASE_URL}/v1/audio/speech",
+            json={"input": ""}
+        )
+        if response.status_code == 422:  # FastAPI validation error
+            print("✓ Empty input error handled correctly (JSON)")
+        else:
+            print(f"✗ Expected 422 for empty input (JSON), got {response.status_code}")
+            print(f"  Response: {response.text}")
+    except Exception as e:
+        print(f"✗ Error testing empty input (JSON): {e}")
+    
+    # Test empty input (upload)
+    try:
+        response = requests.post(
+            f"{API_BASE_URL}/v1/audio/speech/upload",
             data={"input": ""}
         )
         if response.status_code == 422:  # FastAPI validation error
-            print("✓ Empty input error handled correctly")
+            print("✓ Empty input error handled correctly (upload)")
         else:
-            print(f"✗ Expected 422 for empty input, got {response.status_code}")
+            print(f"✗ Expected 422 for empty input (upload), got {response.status_code}")
             print(f"  Response: {response.text}")
     except Exception as e:
-        print(f"✗ Error testing empty input: {e}")
+        print(f"✗ Error testing empty input (upload): {e}")
     
-    # Test invalid parameter ranges
+    # Test invalid parameter ranges (JSON)
     try:
         response = requests.post(
             f"{API_BASE_URL}/v1/audio/speech",
-            data={"input": "test", "exaggeration": "5.0"}  # Out of range
+            json={"input": "test", "exaggeration": 5.0}  # Out of range
         )
         if response.status_code == 422:
-            print("✓ Invalid parameter range error handled correctly")
+            print("✓ Invalid parameter range error handled correctly (JSON)")
         else:
-            print(f"✗ Expected 422 for invalid parameter, got {response.status_code}")
+            print(f"✗ Expected 422 for invalid parameter (JSON), got {response.status_code}")
             print(f"  Response: {response.text}")
     except Exception as e:
-        print(f"✗ Error testing invalid parameters: {e}")
+        print(f"✗ Error testing invalid parameters (JSON): {e}")
     
-    # Test very long text
+    # Test very long text (JSON)
     try:
         long_text = "This is a test. " * 200  # Should exceed max length
         response = requests.post(
             f"{API_BASE_URL}/v1/audio/speech",
-            data={"input": long_text}
+            json={"input": long_text}
         )
         if response.status_code == 400:
-            print("✓ Long text error handled correctly")
+            print("✓ Long text error handled correctly (JSON)")
         else:
-            print(f"✗ Expected 400 for long text, got {response.status_code}")
+            print(f"✗ Expected 400 for long text (JSON), got {response.status_code}")
             print(f"  Response: {response.text}")
     except Exception as e:
-        print(f"✗ Error testing long text: {e}")
+        print(f"✗ Error testing long text (JSON): {e}")
 
 def test_custom_parameters():
     """Test TTS with various custom parameters"""
@@ -278,19 +292,19 @@ def test_custom_parameters():
         description = test_case.pop("description")
         print(f"\n  Test case {i+1}: {description}")
         
-        # Test both JSON and form data endpoints
+        # Test both JSON and upload endpoints
         json_filename = f"test_custom_{i+1}_json.wav"
-        form_filename = f"test_custom_{i+1}_form.wav"
+        upload_filename = f"test_custom_{i+1}_upload.wav"
         
         # Test JSON endpoint
         success_json = test_text_to_speech_json(base_text, json_filename, test_case.copy())
         
-        # Test form data endpoint  
-        success_form = test_text_to_speech_form(base_text, form_filename, test_case.copy())
+        # Test upload endpoint  
+        success_upload = test_text_to_speech_upload(base_text, upload_filename, test_case.copy())
         
-        if success_json and success_form:
+        if success_json and success_upload:
             print(f"    ✓ Both endpoints succeeded for {description}")
-        elif success_json or success_form:
+        elif success_json or success_upload:
             print(f"    ⚠ Only one endpoint succeeded for {description}")
         else:
             print(f"    ✗ Both endpoints failed for {description}")
@@ -334,7 +348,7 @@ def main():
     if test_api_docs():
         tests_passed += 1
     
-    # Test both JSON and form data endpoints with different texts
+    # Test both JSON and upload endpoints with different texts
     for i, text in enumerate(TEST_TEXTS):
         # JSON endpoint test
         total_tests += 1
@@ -342,10 +356,10 @@ def main():
         if test_text_to_speech_json(text, json_filename):
             tests_passed += 1
         
-        # Form data endpoint test
+        # Upload endpoint test
         total_tests += 1
-        form_filename = f"test_output_{i+1}_form.wav"
-        if test_text_to_speech_form(text, form_filename):
+        upload_filename = f"test_output_{i+1}_upload.wav"
+        if test_text_to_speech_upload(text, upload_filename):
             tests_passed += 1
     
     # Error handling tests
@@ -370,12 +384,14 @@ def main():
     
     print("\nGenerated audio files:")
     for file in os.listdir('.'):
-        if file.startswith('test_output_') and file.endswith('.wav'):
+        if (file.startswith('test_output_') or file.startswith('test_custom_')) and file.endswith('.wav'):
             size = os.path.getsize(file)
             print(f"  - {file} ({size:,} bytes)")
     
     print(f"\n💡 Check the generated .wav files to verify audio quality")
     print(f"💡 Visit {API_BASE_URL}/docs for interactive API documentation")
+    print(f"💡 Main endpoint: {API_BASE_URL}/v1/audio/speech (JSON)")
+    print(f"💡 Upload endpoint: {API_BASE_URL}/v1/audio/speech/upload (form data + voice files)")
     
     return tests_passed == total_tests
 

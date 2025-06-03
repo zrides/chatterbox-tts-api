@@ -64,29 +64,14 @@ def validate_audio_file(file: UploadFile) -> None:
         )
 
 
-@router.post(
-    "/v1/audio/speech",
-    response_class=StreamingResponse,
-    responses={
-        200: {"content": {"audio/wav": {}}},
-        400: {"model": ErrorResponse},
-        500: {"model": ErrorResponse}
-    },
-    summary="Generate speech from text",
-    description="Generate speech audio from input text using voice cloning. Supports optional voice file upload for custom voice."
-)
-@router.post("/audio/speech", include_in_schema=False)  # Legacy endpoint
-async def text_to_speech(
-    input: str = Form(..., description="The text to generate audio for", min_length=1, max_length=3000),
-    voice: Optional[str] = Form("alloy", description="Voice to use (ignored - uses voice sample)"),
-    response_format: Optional[str] = Form("wav", description="Audio format (always returns WAV)"),
-    speed: Optional[float] = Form(1.0, description="Speed of speech (ignored)"),
-    exaggeration: Optional[float] = Form(None, description="Emotion intensity (0.25-2.0)", ge=0.25, le=2.0),
-    cfg_weight: Optional[float] = Form(None, description="Pace control (0.0-1.0)", ge=0.0, le=1.0),
-    temperature: Optional[float] = Form(None, description="Sampling temperature (0.05-5.0)", ge=0.05, le=5.0),
-    voice_file: Optional[UploadFile] = File(None, description="Optional voice sample file for custom voice cloning")
-):
-    """Generate speech from text using Chatterbox TTS with optional voice file upload"""
+async def generate_speech_internal(
+    text: str,
+    voice_sample_path: str,
+    exaggeration: Optional[float] = None,
+    cfg_weight: Optional[float] = None,
+    temperature: Optional[float] = None
+) -> io.BytesIO:
+    """Internal function to generate speech with given parameters"""
     global REQUEST_COUNTER
     REQUEST_COUNTER += 1
     
@@ -96,15 +81,6 @@ async def text_to_speech(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"message": "Model not loaded", "type": "model_error"}}
         )
-    
-    # Validate input text
-    if not input or not input.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": {"message": "Input text cannot be empty", "type": "invalid_request_error"}}
-        )
-    
-    input = input.strip()
     
     # Log memory usage before processing
     if Config.ENABLE_MEMORY_MONITORING:
@@ -116,7 +92,7 @@ async def text_to_speech(
             print()
     
     # Validate total text length
-    if len(input) > Config.MAX_TOTAL_LENGTH:
+    if len(text) > Config.MAX_TOTAL_LENGTH:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -126,46 +102,6 @@ async def text_to_speech(
                 }
             }
         )
-    
-    # Handle voice file upload
-    temp_voice_path = None
-    voice_sample_path = Config.VOICE_SAMPLE_PATH  # Default
-    
-    if voice_file:
-        try:
-            # Validate the uploaded file
-            validate_audio_file(voice_file)
-            
-            # Create temporary file for the voice sample
-            file_ext = os.path.splitext(voice_file.filename.lower())[1]
-            temp_voice_fd, temp_voice_path = tempfile.mkstemp(suffix=file_ext, prefix="voice_sample_")
-            
-            # Read and save the uploaded file
-            file_content = await voice_file.read()
-            with os.fdopen(temp_voice_fd, 'wb') as temp_file:
-                temp_file.write(file_content)
-            
-            voice_sample_path = temp_voice_path
-            print(f"Using uploaded voice file: {voice_file.filename} ({len(file_content):,} bytes)")
-            
-        except HTTPException:
-            raise
-        except Exception as e:
-            # Clean up temp file if it was created
-            if temp_voice_path and os.path.exists(temp_voice_path):
-                try:
-                    os.unlink(temp_voice_path)
-                except:
-                    pass
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "error": {
-                        "message": f"Failed to process voice file: {str(e)}",
-                        "type": "file_processing_error"
-                    }
-                }
-            )
     
     audio_chunks = []
     final_audio = None
@@ -178,9 +114,9 @@ async def text_to_speech(
         temperature = temperature if temperature is not None else Config.TEMPERATURE
         
         # Split text into chunks
-        chunks = split_text_into_chunks(input, Config.MAX_CHUNK_LENGTH)
+        chunks = split_text_into_chunks(text, Config.MAX_CHUNK_LENGTH)
         
-        voice_source = "uploaded file" if voice_file else "configured sample"
+        voice_source = "uploaded file" if voice_sample_path != Config.VOICE_SAMPLE_PATH else "configured sample"
         print(f"Processing {len(chunks)} text chunks with {voice_source} and parameters:")
         print(f"  - Exaggeration: {exaggeration}")
         print(f"  - CFG Weight: {cfg_weight}")
@@ -241,14 +177,7 @@ async def text_to_speech(
         
         print(f"✓ Audio generation completed. Size: {len(buffer.getvalue()):,} bytes")
         
-        # Create response
-        response = StreamingResponse(
-            io.BytesIO(buffer.getvalue()),
-            media_type="audio/wav",
-            headers={"Content-Disposition": "attachment; filename=speech.wav"}
-        )
-        
-        return response
+        return buffer
         
     except Exception as e:
         print(f"✗ TTS generation failed: {e}")
@@ -263,14 +192,6 @@ async def text_to_speech(
         )
     
     finally:
-        # Clean up temporary voice file
-        if temp_voice_path and os.path.exists(temp_voice_path):
-            try:
-                os.unlink(temp_voice_path)
-                print(f"🗑️ Cleaned up temporary voice file: {temp_voice_path}")
-            except Exception as e:
-                print(f"⚠️ Warning: Failed to clean up temporary voice file: {e}")
-        
         # Comprehensive cleanup
         try:
             # Clean up all audio chunks
@@ -313,28 +234,136 @@ async def text_to_speech(
             print(f"⚠️ Warning during cleanup: {cleanup_error}")
 
 
-# Legacy JSON endpoint for backward compatibility
 @router.post(
-    "/v1/audio/speech/json",
+    "/v1/audio/speech",
     response_class=StreamingResponse,
     responses={
         200: {"content": {"audio/wav": {}}},
         400: {"model": ErrorResponse},
         500: {"model": ErrorResponse}
     },
-    summary="Generate speech from text (JSON only)",
-    description="Generate speech audio from input text using configured voice sample only. For custom voice upload, use the main endpoint with form data."
+    summary="Generate speech from text",
+    description="Generate speech audio from input text using configured voice sample (JSON only). For custom voice upload, use /v1/audio/speech/upload endpoint."
 )
-async def text_to_speech_json(request: TTSRequest):
-    """Legacy JSON-only endpoint for backward compatibility"""
-    # Convert to form parameters and call main endpoint
-    return await text_to_speech(
-        input=request.input,
-        voice=request.voice,
-        response_format=request.response_format,
-        speed=request.speed,
+@router.post("/audio/speech", include_in_schema=False)  # Legacy endpoint
+async def text_to_speech(request: TTSRequest):
+    """Generate speech from text using Chatterbox TTS with configured voice sample (JSON)"""
+    
+    # Generate speech using internal function
+    buffer = await generate_speech_internal(
+        text=request.input,
+        voice_sample_path=Config.VOICE_SAMPLE_PATH,
         exaggeration=request.exaggeration,
         cfg_weight=request.cfg_weight,
-        temperature=request.temperature,
-        voice_file=None  # No file upload for JSON endpoint
-    ) 
+        temperature=request.temperature
+    )
+    
+    # Create response
+    response = StreamingResponse(
+        io.BytesIO(buffer.getvalue()),
+        media_type="audio/wav",
+        headers={"Content-Disposition": "attachment; filename=speech.wav"}
+    )
+    
+    return response
+
+
+@router.post(
+    "/v1/audio/speech/upload",
+    response_class=StreamingResponse,
+    responses={
+        200: {"content": {"audio/wav": {}}},
+        400: {"model": ErrorResponse},
+        500: {"model": ErrorResponse}
+    },
+    summary="Generate speech with custom voice upload",
+    description="Generate speech audio from input text with optional custom voice file upload"
+)
+async def text_to_speech_with_upload(
+    input: str = Form(..., description="The text to generate audio for", min_length=1, max_length=3000),
+    voice: Optional[str] = Form("alloy", description="Voice to use (ignored - uses voice sample)"),
+    response_format: Optional[str] = Form("wav", description="Audio format (always returns WAV)"),
+    speed: Optional[float] = Form(1.0, description="Speed of speech (ignored)"),
+    exaggeration: Optional[float] = Form(None, description="Emotion intensity (0.25-2.0)", ge=0.25, le=2.0),
+    cfg_weight: Optional[float] = Form(None, description="Pace control (0.0-1.0)", ge=0.0, le=1.0),
+    temperature: Optional[float] = Form(None, description="Sampling temperature (0.05-5.0)", ge=0.05, le=5.0),
+    voice_file: Optional[UploadFile] = File(None, description="Optional voice sample file for custom voice cloning")
+):
+    """Generate speech from text using Chatterbox TTS with optional voice file upload"""
+    
+    # Validate input text
+    if not input or not input.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"message": "Input text cannot be empty", "type": "invalid_request_error"}}
+        )
+    
+    input = input.strip()
+    
+    # Handle voice file upload
+    temp_voice_path = None
+    voice_sample_path = Config.VOICE_SAMPLE_PATH  # Default
+    
+    if voice_file:
+        try:
+            # Validate the uploaded file
+            validate_audio_file(voice_file)
+            
+            # Create temporary file for the voice sample
+            file_ext = os.path.splitext(voice_file.filename.lower())[1]
+            temp_voice_fd, temp_voice_path = tempfile.mkstemp(suffix=file_ext, prefix="voice_sample_")
+            
+            # Read and save the uploaded file
+            file_content = await voice_file.read()
+            with os.fdopen(temp_voice_fd, 'wb') as temp_file:
+                temp_file.write(file_content)
+            
+            voice_sample_path = temp_voice_path
+            print(f"Using uploaded voice file: {voice_file.filename} ({len(file_content):,} bytes)")
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Clean up temp file if it was created
+            if temp_voice_path and os.path.exists(temp_voice_path):
+                try:
+                    os.unlink(temp_voice_path)
+                except:
+                    pass
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "error": {
+                        "message": f"Failed to process voice file: {str(e)}",
+                        "type": "file_processing_error"
+                    }
+                }
+            )
+    
+    try:
+        # Generate speech using internal function
+        buffer = await generate_speech_internal(
+            text=input,
+            voice_sample_path=voice_sample_path,
+            exaggeration=exaggeration,
+            cfg_weight=cfg_weight,
+            temperature=temperature
+        )
+        
+        # Create response
+        response = StreamingResponse(
+            io.BytesIO(buffer.getvalue()),
+            media_type="audio/wav",
+            headers={"Content-Disposition": "attachment; filename=speech.wav"}
+        )
+        
+        return response
+        
+    finally:
+        # Clean up temporary voice file
+        if temp_voice_path and os.path.exists(temp_voice_path):
+            try:
+                os.unlink(temp_voice_path)
+                print(f"🗑️ Cleaned up temporary voice file: {temp_voice_path}")
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to clean up temporary voice file: {e}") 

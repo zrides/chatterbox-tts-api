@@ -3,7 +3,7 @@
 Test script for voice upload functionality
 
 This script demonstrates how to use the voice upload feature
-with both custom voice files and the default voice sample.
+with both the main JSON endpoint and the new upload endpoint.
 """
 
 import os
@@ -27,11 +27,11 @@ def test_voice_upload():
     # Create output directory
     OUTPUT_DIR.mkdir(exist_ok=True)
     
-    # Test 1: Default voice (legacy JSON endpoint)
-    print("\n1️⃣ Testing legacy JSON endpoint (default voice)...")
+    # Test 1: Main JSON endpoint (default voice)
+    print("\n1️⃣ Testing main JSON endpoint (default voice)...")
     try:
         response = requests.post(
-            f"{BASE_URL}/v1/audio/speech/json",
+            f"{BASE_URL}/v1/audio/speech",
             json={
                 "input": "Hello! This is using the default configured voice sample.",
                 "exaggeration": 0.7
@@ -40,7 +40,7 @@ def test_voice_upload():
         )
         response.raise_for_status()
         
-        output_file = OUTPUT_DIR / "test_default_voice.wav"
+        output_file = OUTPUT_DIR / "test_main_json_voice.wav"
         with open(output_file, "wb") as f:
             f.write(response.content)
         
@@ -50,13 +50,13 @@ def test_voice_upload():
     except Exception as e:
         print(f"❌ Failed: {e}")
     
-    # Test 2: Default voice (new form data endpoint)
-    print("\n2️⃣ Testing form data endpoint (default voice)...")
+    # Test 2: Upload endpoint (default voice, no file)
+    print("\n2️⃣ Testing upload endpoint (default voice, no file upload)...")
     try:
         response = requests.post(
-            f"{BASE_URL}/v1/audio/speech",
+            f"{BASE_URL}/v1/audio/speech/upload",
             data={
-                "input": "Hello! This is using the default voice via form data.",
+                "input": "Hello! This is using the upload endpoint without a file.",
                 "exaggeration": 0.6,
                 "temperature": 0.9
             },
@@ -64,7 +64,7 @@ def test_voice_upload():
         )
         response.raise_for_status()
         
-        output_file = OUTPUT_DIR / "test_form_default_voice.wav"
+        output_file = OUTPUT_DIR / "test_upload_default_voice.wav"
         with open(output_file, "wb") as f:
             f.write(response.content)
         
@@ -96,7 +96,7 @@ def test_voice_upload():
             
             with open(voice_sample_file, "rb") as voice_file:
                 response = requests.post(
-                    f"{BASE_URL}/v1/audio/speech",
+                    f"{BASE_URL}/v1/audio/speech/upload",
                     data={
                         "input": "Amazing! This is using an uploaded custom voice file.",
                         "exaggeration": 0.8,
@@ -130,7 +130,7 @@ def test_voice_upload():
         dummy_file_content = b"This is not an audio file"
         
         response = requests.post(
-            f"{BASE_URL}/v1/audio/speech",
+            f"{BASE_URL}/v1/audio/speech/upload",
             data={
                 "input": "This should fail due to invalid voice file.",
             },
@@ -150,11 +150,30 @@ def test_voice_upload():
     except Exception as e:
         print(f"❌ Test failed: {e}")
     
-    # Test 5: Error handling - empty input
-    print("\n5️⃣ Testing error handling (empty input)...")
+    # Test 5: Error handling - empty input (JSON endpoint)
+    print("\n5️⃣ Testing error handling (empty input - JSON endpoint)...")
     try:
         response = requests.post(
             f"{BASE_URL}/v1/audio/speech",
+            json={
+                "input": "",  # Empty input
+            },
+            timeout=30
+        )
+        
+        if response.status_code == 422:  # FastAPI validation error
+            print(f"✅ Correctly rejected empty input (JSON)")
+        else:
+            print(f"❌ Expected 422 error, got {response.status_code}")
+            
+    except Exception as e:
+        print(f"❌ Test failed: {e}")
+    
+    # Test 6: Error handling - empty input (upload endpoint)
+    print("\n6️⃣ Testing error handling (empty input - upload endpoint)...")
+    try:
+        response = requests.post(
+            f"{BASE_URL}/v1/audio/speech/upload",
             data={
                 "input": "",  # Empty input
             },
@@ -162,7 +181,7 @@ def test_voice_upload():
         )
         
         if response.status_code == 422:  # FastAPI validation error
-            print(f"✅ Correctly rejected empty input")
+            print(f"✅ Correctly rejected empty input (upload)")
         else:
             print(f"❌ Expected 422 error, got {response.status_code}")
             
@@ -183,17 +202,25 @@ def test_api_docs():
         response.raise_for_status()
         
         openapi_data = response.json()
-        speech_endpoint = openapi_data.get("paths", {}).get("/v1/audio/speech", {})
         
+        # Check main speech endpoint
+        speech_endpoint = openapi_data.get("paths", {}).get("/v1/audio/speech", {})
         if speech_endpoint:
-            # Check if voice_file parameter is documented
-            post_params = speech_endpoint.get("post", {}).get("requestBody", {})
-            if "multipart/form-data" in str(post_params):
-                print("✅ API documentation includes multipart form data support")
-            else:
-                print("⚠️ API documentation may not be fully updated")
+            print("✅ Main /v1/audio/speech endpoint documented")
         else:
-            print("❌ Speech endpoint not found in API documentation")
+            print("❌ Main speech endpoint not found in API documentation")
+        
+        # Check upload endpoint
+        upload_endpoint = openapi_data.get("paths", {}).get("/v1/audio/speech/upload", {})
+        if upload_endpoint:
+            # Check if voice_file parameter is documented
+            post_params = upload_endpoint.get("post", {}).get("requestBody", {})
+            if "multipart/form-data" in str(post_params):
+                print("✅ Upload endpoint includes multipart form data support")
+            else:
+                print("⚠️ Upload endpoint may not have multipart support documented")
+        else:
+            print("❌ Upload endpoint not found in API documentation")
             
         # Check if docs are accessible
         docs_response = requests.get(f"{BASE_URL}/docs")
@@ -207,31 +234,42 @@ def test_api_docs():
 
 
 def show_usage_examples():
-    """Show usage examples for the new voice upload feature"""
+    """Show usage examples for the voice upload feature"""
     print("\n📖 Usage Examples")
     print("=" * 50)
     
-    print("\n🔹 Python example (default voice):")
+    print("\n🔹 Python example (default voice - JSON endpoint):")
     print("""
 import requests
 
-# Using form data (new endpoint)
+# Main JSON endpoint (recommended for default voice)
 response = requests.post(
     "http://localhost:5123/v1/audio/speech",
+    json={
+        "input": "Hello world!",
+        "exaggeration": 0.7
+    }
+)
+
+with open("output.wav", "wb") as f:
+    f.write(response.content)
+""")
+    
+    print("\n🔹 Python example (default voice - upload endpoint):")
+    print("""
+import requests
+
+# Upload endpoint without file (uses default voice)
+response = requests.post(
+    "http://localhost:5123/v1/audio/speech/upload",
     data={
         "input": "Hello world!",
         "exaggeration": 0.7
     }
 )
 
-# Using JSON (legacy endpoint)
-response = requests.post(
-    "http://localhost:5123/v1/audio/speech/json",
-    json={
-        "input": "Hello world!",
-        "exaggeration": 0.7
-    }
-)
+with open("output.wav", "wb") as f:
+    f.write(response.content)
 """)
     
     print("\n🔹 Python example (custom voice upload):")
@@ -240,7 +278,7 @@ import requests
 
 with open("my_voice.mp3", "rb") as voice_file:
     response = requests.post(
-        "http://localhost:5123/v1/audio/speech",
+        "http://localhost:5123/v1/audio/speech/upload",
         data={
             "input": "Hello with my custom voice!",
             "exaggeration": 0.8,
@@ -255,14 +293,26 @@ with open("output.wav", "wb") as f:
     f.write(response.content)
 """)
     
-    print("\n🔹 cURL example (custom voice upload):")
+    print("\n🔹 cURL example (JSON - default voice):")
     print("""
 curl -X POST http://localhost:5123/v1/audio/speech \\
+  -H "Content-Type: application/json" \\
+  -d '{"input": "Hello world!", "exaggeration": 0.8}' \\
+  --output output.wav
+""")
+    
+    print("\n🔹 cURL example (custom voice upload):")
+    print("""
+curl -X POST http://localhost:5123/v1/audio/speech/upload \\
   -F "input=Hello with my custom voice!" \\
   -F "exaggeration=0.8" \\
   -F "voice_file=@my_voice.mp3" \\
   --output custom_voice_output.wav
 """)
+    
+    print("\n🔹 Endpoint summary:")
+    print("   • /v1/audio/speech - JSON only, uses configured voice sample")
+    print("   • /v1/audio/speech/upload - Form data, optional voice file upload")
     
     print("\n🔹 Supported voice file formats:")
     print("   • MP3 (.mp3)")
