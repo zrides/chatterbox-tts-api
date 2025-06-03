@@ -50,19 +50,56 @@ docker run -d \
 
 ## 📦 Available Images
 
-| Image Tag | Size   | Description                          | Use Case                       |
-| --------- | ------ | ------------------------------------ | ------------------------------ |
-| `latest`  | ~4.5GB | CUDA-compatible, works on CPU or GPU | **Recommended for most users** |
-| `cpu`     | ~2.8GB | CPU-only, smaller image              | CPU-only environments          |
-| `gpu`     | ~4.5GB | Same as latest, clearer GPU intent   | Explicit GPU usage             |
-| `v1.0.0`  | ~4.5GB | Specific version tag                 | Production deployments         |
+| Image Tag | Size   | Platforms                 | Description                          | Use Case                       |
+| --------- | ------ | ------------------------- | ------------------------------------ | ------------------------------ |
+| `latest`  | ~4.5GB | `linux/amd64`             | CUDA-compatible, works on CPU or GPU | **Recommended for most users** |
+| `cpu`     | ~2.8GB | `linux/amd64,linux/arm64` | CPU-only, smaller image              | CPU-only environments, ARM64   |
+| `gpu`     | ~4.5GB | `linux/amd64`             | Same as latest, clearer GPU intent   | Explicit GPU usage             |
+| `v1.0.0`  | ~4.5GB | `linux/amd64`             | Specific version tag                 | Production deployments         |
+
+### Platform Support
+
+**🖥️ AMD64/x86_64 (Intel/AMD processors):**
+
+- ✅ All image variants supported
+- ✅ GPU acceleration available with NVIDIA Docker
+- ✅ CPU-only operation supported
+
+**🍎 ARM64 (Apple Silicon, ARM processors):**
+
+- ✅ `cpu` variant only (due to CUDA limitations)
+- ❌ GPU variants not available (CUDA requires x86_64)
+- 💡 Use `travisvn/chatterbox-tts-api:cpu` for ARM64 systems
 
 ### Which Image Should I Use?
 
-- **🎯 Most users**: Use `latest` - it automatically detects your hardware
+- **🎯 Most users (x86_64)**: Use `latest` - it automatically detects your hardware
 - **💻 CPU-only systems**: Use `cpu` - smaller download, CPU-optimized
-- **🎮 GPU systems**: Use `gpu` or `latest` - both work the same
+- **🍎 Apple Silicon (M1/M2/M3)**: Use `cpu` - only compatible variant
+- **🎮 GPU systems (x86_64)**: Use `gpu` or `latest` - both work the same
 - **🏢 Production**: Use version tags like `v1.0.0` for stability
+
+### Docker Platform Selection
+
+Docker automatically selects the correct platform, but you can be explicit:
+
+```bash
+# For ARM64 systems (explicitly pull ARM64 CPU variant)
+docker run -d \
+  --platform linux/arm64 \
+  --name chatterbox-tts \
+  -p 5123:5123 \
+  -v ./voice-sample.mp3:/app/voice-sample.mp3:ro \
+  travisvn/chatterbox-tts-api:cpu
+
+# For x86_64 systems (explicitly pull AMD64 variant)
+docker run -d \
+  --platform linux/amd64 \
+  --name chatterbox-tts \
+  -p 5123:5123 \
+  -v ./voice-sample.mp3:/app/voice-sample.mp3:ro \
+  travisvn/chatterbox-tts-api:latest
+```
 
 ## ⚙️ Configuration
 
@@ -361,6 +398,29 @@ docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu20.04 nvidia-smi
 
 # Check container GPU access
 docker exec chatterbox-tts python -c "import torch; print(torch.cuda.is_available())"
+```
+
+**Platform compatibility issues:**
+
+```bash
+# ARM64 systems (Apple Silicon) - use CPU variant only
+docker run -d \
+  --platform linux/arm64 \
+  -p 5123:5123 \
+  travisvn/chatterbox-tts-api:cpu
+
+# Force specific platform if auto-detection fails
+docker run -d \
+  --platform linux/amd64 \
+  -p 5123:5123 \
+  travisvn/chatterbox-tts-api:latest
+
+# Check what platform was pulled
+docker inspect travisvn/chatterbox-tts-api:latest | grep Architecture
+
+# If getting "CUDA not available" errors on ARM64
+# Solution: Use CPU variant instead of GPU/latest
+docker run -d travisvn/chatterbox-tts-api:cpu
 ```
 
 ## 🔒 Security Best Practices

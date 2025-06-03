@@ -18,13 +18,13 @@ jobs:
         variant:
           - name: latest
             dockerfile: docker/Dockerfile.dockerhub
-            platforms: linux/amd64,linux/arm64
+            platforms: linux/amd64 # CUDA only available on x86_64
             tags: |
               travisvn/chatterbox-tts-api:latest
               travisvn/chatterbox-tts-api:gpu
           - name: cpu
             dockerfile: docker/Dockerfile.dockerhub.cpu
-            platforms: linux/amd64,linux/arm64
+            platforms: linux/amd64,linux/arm64 # CPU can support both architectures
             tags: |
               travisvn/chatterbox-tts-api:cpu
 
@@ -90,8 +90,8 @@ jobs:
             -v ${{ github.workspace }}/voice-sample.mp3:/app/voice-sample.mp3:ro \
             ${{ env.DOCKER_HUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ matrix.variant }}
 
-          # Wait for container to be ready
-          timeout 300 bash -c 'until curl -f http://localhost:5123/health; do sleep 5; done'
+          # Wait for container to be ready (increased timeout for model download)
+          timeout 600 bash -c 'until curl -f http://localhost:5123/health; do sleep 10; done'
 
           # Test basic API functionality
           curl -X POST http://localhost:5123/v1/audio/speech \
