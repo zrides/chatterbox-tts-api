@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy requirements and install other dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv requests chatterbox-tts
+RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv requests psutil chatterbox-tts
 
 # Copy application code (no fix scripts needed for GPU)
 COPY api.py test_api.py ./

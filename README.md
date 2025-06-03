@@ -29,7 +29,8 @@
 ⚙️ **Configurable** - Extensive environment variable configuration  
 🎛️ **Parameter Control** - Real-time adjustment of speech characteristics  
 📚 **Auto Documentation** - Interactive API docs at `/docs` and `/redoc`  
-🔧 **Type Safety** - Full Pydantic validation for requests and responses
+🔧 **Type Safety** - Full Pydantic validation for requests and responses  
+🧠 **Memory Management** - Advanced memory monitoring and automatic cleanup
 
 ## Quick Start
 
@@ -120,6 +121,7 @@ Once running, visit:
 - **Interactive API Docs**: http://localhost:5123/docs (Swagger UI)
 - **Alternative Docs**: http://localhost:5123/redoc (ReDoc)
 - **OpenAPI Schema**: http://localhost:5123/openapi.json
+- **Memory Monitoring**: http://localhost:5123/memory (Memory usage stats)
 
 ## API Usage
 
@@ -278,6 +280,80 @@ docker compose up -d
 - `0.4-0.6`: More consistent
 - `0.8`: Default balance
 - `1.0+`: More creative/random
+
+</details>
+
+<details>
+<summary><strong>🧠 Memory Management</strong></summary>
+
+The API includes advanced memory management to prevent memory leaks and optimize performance:
+
+### Memory Management Features
+
+- **Automatic Cleanup**: Periodic garbage collection and tensor cleanup
+- **CUDA Memory Management**: Automatic GPU cache clearing
+- **Memory Monitoring**: Real-time memory usage tracking
+- **Manual Controls**: API endpoints for manual cleanup operations
+
+### Memory Configuration
+
+| Variable                    | Default | Description                       |
+| --------------------------- | ------- | --------------------------------- |
+| `MEMORY_CLEANUP_INTERVAL`   | `5`     | Cleanup memory every N requests   |
+| `CUDA_CACHE_CLEAR_INTERVAL` | `3`     | Clear CUDA cache every N requests |
+| `ENABLE_MEMORY_MONITORING`  | `true`  | Enable detailed memory logging    |
+
+### Memory Monitoring Endpoints
+
+```bash
+# Get memory status
+curl http://localhost:5123/memory
+
+# Trigger manual cleanup
+curl "http://localhost:5123/memory?cleanup=true&force_cuda_clear=true"
+
+# Reset memory tracking (with confirmation)
+curl -X POST "http://localhost:5123/memory/reset?confirm=true"
+```
+
+### Memory Testing
+
+Run the memory management test suite:
+
+```bash
+# Test memory patterns and cleanup
+python test_memory.py  # or: uv run test_memory.py
+
+# Monitor memory during testing
+watch -n 1 'curl -s http://localhost:5123/memory | jq .memory_info'
+```
+
+### Memory Optimization Tips
+
+**For High-Volume Production:**
+
+```env
+MEMORY_CLEANUP_INTERVAL=3
+CUDA_CACHE_CLEAR_INTERVAL=2
+ENABLE_MEMORY_MONITORING=false  # Reduce logging overhead
+MAX_CHUNK_LENGTH=200             # Smaller chunks for less memory usage
+```
+
+**For Development/Debugging:**
+
+```env
+MEMORY_CLEANUP_INTERVAL=1
+CUDA_CACHE_CLEAR_INTERVAL=1
+ENABLE_MEMORY_MONITORING=true
+```
+
+**Memory Leak Prevention:**
+
+- Tensors are automatically moved to CPU before deletion
+- Gradient tracking is disabled during inference
+- Audio chunks are cleaned up after concatenation
+- CUDA cache is periodically cleared
+- Python garbage collection is triggered regularly
 
 </details>
 
