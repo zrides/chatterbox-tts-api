@@ -87,7 +87,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 5123
 python main.py
 ```
 
-> Ran into issues? Check the [troubleshooting section](https://github.com/travisvn/chatterbox-tts-api/blob/main/README.md#common-issues)
+> Ran into issues? Check the [troubleshooting section](https://github.com/travisvn/chatterbox-tts-api?tab=readme-ov-file#common-issues)
 
 ### Docker (Recommended)
 
