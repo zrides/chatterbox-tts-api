@@ -87,6 +87,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 5123
 python main.py
 ```
 
+> Ran into issues? Check the [troubleshooting section](https://github.com/travisvn/chatterbox-tts-api/blob/main/README.md#common-issues)
+
 ### Docker (Recommended)
 
 ```bash
@@ -511,6 +513,13 @@ pip install chatterbox-tts
 
 # With uv (handles this automatically)
 uv sync
+```
+
+**Windows Users**, using pip & having issues:
+
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 --force-reinstall
+pip install --force-reinstall typing_extensions
 ```
 
 **Port conflicts**
