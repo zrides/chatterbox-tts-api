@@ -19,4 +19,20 @@ export interface VoiceSample {
   file: File;
   audioUrl: string;
   uploadDate: Date;
+}
+
+export interface AudioRecord {
+  id: string;
+  name: string;
+  audioUrl: string;
+  blob: Blob;
+  createdAt: Date;
+  settings: {
+    text: string;
+    exaggeration: number;
+    cfgWeight: number;
+    temperature: number;
+    voiceId?: string;
+    voiceName?: string;
+  };
 } 

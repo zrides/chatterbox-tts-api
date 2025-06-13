@@ -5,27 +5,61 @@ import ThemeToggle from './components/theme-toggle';
 import {
   ApiEndpointSelector,
   TextInput,
-  VoiceUpload,
   AdvancedSettings,
   AudioPlayer
 } from './components/tts';
+import VoiceLibrary from './components/VoiceLibrary';
+import AudioHistory from './components/AudioHistory';
 import { createTTSService } from './services/tts';
 import { useApiEndpoint } from './hooks/useApiEndpoint';
+import { useVoiceLibrary } from './hooks/useVoiceLibrary';
+import { useAudioHistory } from './hooks/useAudioHistory';
+import { useAdvancedSettings } from './hooks/useAdvancedSettings';
+import { useTextInput } from './hooks/useTextInput';
 import type { TTSRequest, HealthResponse } from './types';
 
 function App() {
-  const [text, setText] = useState('');
-  const [voiceFile, setVoiceFile] = useState<File | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Advanced parameters
-  const [exaggeration, setExaggeration] = useState(0.5);
-  const [cfgWeight, setCfgWeight] = useState(0.5);
-  const [temperature, setTemperature] = useState(0.8);
-
   // API endpoint management
   const { apiBaseUrl, updateApiBaseUrl } = useApiEndpoint();
+
+  // Text input management with persistence
+  const { text, updateText, clearText, hasText } = useTextInput();
+
+  // Advanced settings management with persistence
+  const {
+    exaggeration,
+    cfgWeight,
+    temperature,
+    updateExaggeration,
+    updateCfgWeight,
+    updateTemperature,
+    resetToDefaults,
+    isDefault
+  } = useAdvancedSettings();
+
+  // Voice library management
+  const {
+    voices,
+    selectedVoice,
+    setSelectedVoice,
+    addVoice,
+    deleteVoice,
+    renameVoice,
+    isLoading: voicesLoading
+  } = useVoiceLibrary();
+
+  // Audio history management
+  const {
+    audioHistory,
+    addAudioRecord,
+    deleteAudioRecord,
+    renameAudioRecord,
+    clearHistory,
+    isLoading: historyLoading
+  } = useAudioHistory();
 
   // Create TTS service with current API base URL
   const ttsService = useMemo(() => createTTSService(apiBaseUrl), [apiBaseUrl]);
@@ -38,12 +72,32 @@ function App() {
 
   const generateMutation = useMutation({
     mutationFn: ttsService.generateSpeech,
-    onSuccess: (audioBlob) => {
+    onSuccess: async (audioBlob) => {
+      // Clean up previous audio URL
       if (audioUrl) {
         URL.revokeObjectURL(audioUrl);
       }
+
+      // Create new audio URL
       const url = URL.createObjectURL(audioBlob);
       setAudioUrl(url);
+
+      // Save to audio history
+      try {
+        await addAudioRecord(
+          audioBlob,
+          {
+            text,
+            exaggeration,
+            cfgWeight,
+            temperature,
+            voiceId: selectedVoice?.id,
+            voiceName: selectedVoice?.name
+          }
+        );
+      } catch (error) {
+        console.error('Failed to save audio record:', error);
+      }
     },
     onError: (error) => {
       console.error('TTS generation failed:', error);
@@ -62,7 +116,7 @@ function App() {
       exaggeration,
       cfg_weight: cfgWeight,
       temperature,
-      voice_file: voiceFile || undefined
+      voice_file: selectedVoice?.file || undefined
     });
   };
 
@@ -105,13 +159,20 @@ function App() {
             {/* Text Input */}
             <TextInput
               value={text}
-              onChange={setText}
+              onChange={updateText}
+              onClear={clearText}
+              hasText={hasText}
             />
 
-            {/* Voice Upload */}
-            <VoiceUpload
-              voiceFile={voiceFile}
-              onFileChange={setVoiceFile}
+            {/* Voice Library */}
+            <VoiceLibrary
+              voices={voices}
+              selectedVoice={selectedVoice}
+              onVoiceSelect={setSelectedVoice}
+              onAddVoice={addVoice}
+              onDeleteVoice={deleteVoice}
+              onRenameVoice={renameVoice}
+              isLoading={voicesLoading}
             />
 
             {/* Advanced Settings */}
@@ -119,12 +180,24 @@ function App() {
               showAdvanced={showAdvanced}
               onToggle={() => setShowAdvanced(!showAdvanced)}
               exaggeration={exaggeration}
-              onExaggerationChange={setExaggeration}
+              onExaggerationChange={updateExaggeration}
               cfgWeight={cfgWeight}
-              onCfgWeightChange={setCfgWeight}
+              onCfgWeightChange={updateCfgWeight}
               temperature={temperature}
-              onTemperatureChange={setTemperature}
+              onTemperatureChange={updateTemperature}
+              onResetToDefaults={resetToDefaults}
+              isDefault={isDefault}
             />
+
+            {/* Current Voice Indicator */}
+            {selectedVoice && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-200">
+                  <Volume2 className="w-4 h-4" />
+                  <span>Using voice: <strong>{selectedVoice.name}</strong></span>
+                </div>
+              </div>
+            )}
 
             {/* Generate Button */}
             <div className="mb-6">
@@ -141,6 +214,21 @@ function App() {
             {/* Audio Player */}
             <AudioPlayer
               audioUrl={audioUrl}
+            />
+
+            {/* Audio History */}
+            <AudioHistory
+              audioHistory={audioHistory}
+              onDeleteAudioRecord={deleteAudioRecord}
+              onRenameAudioRecord={renameAudioRecord}
+              onClearHistory={clearHistory}
+              onRestoreSettings={(settings) => {
+                updateExaggeration(settings.exaggeration);
+                updateCfgWeight(settings.cfgWeight);
+                updateTemperature(settings.temperature);
+              }}
+              onRestoreText={updateText}
+              isLoading={historyLoading}
             />
           </div>
         </div>

@@ -8,9 +8,7 @@ const ThemeToggle = () => {
 
   const toggleTheme = () => {
     const resolvedTheme = theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme;
-    console.log('resolvedTheme', resolvedTheme);
     const nextTheme = resolvedTheme !== 'dark' ? 'dark' : 'light';
-    console.log('nextTheme', nextTheme);
     setTheme(nextTheme);
   }
 

@@ -1,8 +1,11 @@
 import React from 'react';
+import { X } from 'lucide-react';
 
 interface TextInputProps {
   value: string;
   onChange: (value: string) => void;
+  onClear: () => void;
+  hasText: boolean;
   maxLength?: number;
   placeholder?: string;
 }
@@ -10,14 +13,28 @@ interface TextInputProps {
 export default function TextInput({
   value,
   onChange,
+  onClear,
+  hasText,
   maxLength = 3000,
   placeholder = "Enter the text you want to convert to speech..."
 }: TextInputProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Text to Convert
-      </label>
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Text to Convert
+        </label>
+        {hasText && (
+          <button
+            onClick={onClear}
+            className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-300"
+            title="Clear text"
+          >
+            <X className="w-3 h-3" />
+            Clear
+          </button>
+        )}
+      </div>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}

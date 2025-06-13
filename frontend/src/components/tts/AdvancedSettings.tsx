@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, RotateCcw } from 'lucide-react';
 
 interface AdvancedSettingsProps {
   showAdvanced: boolean;
@@ -10,6 +10,8 @@ interface AdvancedSettingsProps {
   onCfgWeightChange: (value: number) => void;
   temperature: number;
   onTemperatureChange: (value: number) => void;
+  onResetToDefaults: () => void;
+  isDefault: boolean;
 }
 
 export default function AdvancedSettings({
@@ -20,20 +22,34 @@ export default function AdvancedSettings({
   cfgWeight,
   onCfgWeightChange,
   temperature,
-  onTemperatureChange
+  onTemperatureChange,
+  onResetToDefaults,
+  isDefault
 }: AdvancedSettingsProps) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-      <button
-        onClick={onToggle}
-        className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
-      >
-        <Settings className="w-4 h-4" />
-        Advanced Settings
-        <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded">
-          {showAdvanced ? 'Hide' : 'Show'}
-        </span>
-      </button>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6 border border-gray-200 dark:border-gray-700 transition-colors duration-300 mt-6">
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors duration-300"
+        >
+          <Settings className="w-4 h-4" />
+          Advanced Settings
+          <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded">
+            {showAdvanced ? 'Hide' : 'Show'}
+          </span>
+        </button>
+
+        {showAdvanced && !isDefault && (
+          <button
+            onClick={onResetToDefaults}
+            className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors duration-300"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Reset to Defaults
+          </button>
+        )}
+      </div>
 
       {showAdvanced && (
         <div className="space-y-4">
