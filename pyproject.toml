@@ -9,8 +9,8 @@ requires-python = ">=3.11"
 dependencies = [
   "chatterbox-tts @ file:///${PROJECT_ROOT}/chatterbox",
   "resemble-perth",
-  "torch>=2.0.0,<2.7.0",
-  "torchaudio>=2.0.0,<2.7.0",
+  "torch==2.7.1",
+  "torchaudio==2.7.1",
   "fastapi>=0.104.0",
   "uvicorn[standard]>=0.24.0",
   "pydantic>=2.0.0",
