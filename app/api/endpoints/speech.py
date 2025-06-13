@@ -8,7 +8,7 @@ import asyncio
 import tempfile
 import torch
 import torchaudio as ta
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, status, Form, File, UploadFile
 from fastapi.responses import StreamingResponse
 
@@ -16,17 +16,21 @@ from app.models import TTSRequest, ErrorResponse
 from app.config import Config
 from app.core import (
     get_memory_info, cleanup_memory, safe_delete_tensors,
-    split_text_into_chunks, concatenate_audio_chunks
+    split_text_into_chunks, concatenate_audio_chunks, add_route_aliases
 )
 from app.core.tts_model import get_model
 
-router = APIRouter()
+# Create router with aliasing support
+base_router = APIRouter()
+router = add_route_aliases(base_router)
 
 # Request counter for memory management
 REQUEST_COUNTER = 0
 
 # Supported audio formats for voice uploads
 SUPPORTED_AUDIO_FORMATS = {'.mp3', '.wav', '.flac', '.m4a', '.ogg'}
+
+
 
 
 def validate_audio_file(file: UploadFile) -> None:
@@ -235,7 +239,7 @@ async def generate_speech_internal(
 
 
 @router.post(
-    "/v1/audio/speech",
+    "/audio/speech",
     response_class=StreamingResponse,
     responses={
         200: {"content": {"audio/wav": {}}},
@@ -243,9 +247,8 @@ async def generate_speech_internal(
         500: {"model": ErrorResponse}
     },
     summary="Generate speech from text",
-    description="Generate speech audio from input text using configured voice sample (JSON only). For custom voice upload, use /v1/audio/speech/upload endpoint."
+    description="Generate speech audio from input text using configured voice sample (JSON only). For custom voice upload, use /audio/speech/upload endpoint."
 )
-@router.post("/audio/speech", include_in_schema=False)  # Legacy endpoint
 async def text_to_speech(request: TTSRequest):
     """Generate speech from text using Chatterbox TTS with configured voice sample (JSON)"""
     
@@ -269,7 +272,7 @@ async def text_to_speech(request: TTSRequest):
 
 
 @router.post(
-    "/v1/audio/speech/upload",
+    "/audio/speech/upload",
     response_class=StreamingResponse,
     responses={
         200: {"content": {"audio/wav": {}}},
@@ -366,4 +369,7 @@ async def text_to_speech_with_upload(
                 os.unlink(temp_voice_path)
                 print(f"🗑️ Cleaned up temporary voice file: {temp_voice_path}")
             except Exception as e:
-                print(f"⚠️ Warning: Failed to clean up temporary voice file: {e}") 
+                print(f"⚠️ Warning: Failed to clean up temporary voice file: {e}")
+
+# Export the base router for the main app to use
+__all__ = ["base_router"] 

@@ -18,7 +18,7 @@ def start_dev():
         "uvicorn",
         "app.main:app",
         "--host", "0.0.0.0",
-        "--port", "5123",
+        "--port", "4123",
         "--reload",
         "--log-level", "debug"
     ]
@@ -29,6 +29,13 @@ def start_prod():
     """Start the API in production mode"""
     print("🚀 Starting Chatterbox TTS API in production mode...")
     cmd = ["python", "main.py"]
+    subprocess.run(cmd)
+
+
+def start_fullstack():
+    """Start the full stack (API + Frontend) with Docker Compose"""
+    print("🚀 Starting Chatterbox TTS API Full Stack (API + Frontend)...")
+    cmd = ["docker", "compose", "-f", "docker/docker-compose.yml", "--profile", "frontend", "up", "--build"]
     subprocess.run(cmd)
 
 
@@ -91,16 +98,16 @@ start.py                 # This development script
 """)
     
     print("\n🔗 Useful endpoints:")
-    print("  • API Documentation: http://localhost:5123/docs")
-    print("  • Alternative Docs: http://localhost:5123/redoc") 
-    print("  • Health Check: http://localhost:5123/health")
-    print("  • Memory Info: http://localhost:5123/memory")
-    print("  • Configuration: http://localhost:5123/config")
+    print("  • API Documentation: http://localhost:4123/docs")
+    print("  • Alternative Docs: http://localhost:4123/redoc") 
+    print("  • Health Check: http://localhost:4123/health")
+    print("  • Memory Info: http://localhost:4123/memory")
+    print("  • Configuration: http://localhost:4123/config")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Chatterbox TTS API Development Helper")
-    parser.add_argument("command", choices=["dev", "prod", "test", "test-memory", "info"], 
+    parser.add_argument("command", choices=["dev", "prod", "test", "test-memory", "info", "fullstack"], 
                        help="Command to execute")
     
     args = parser.parse_args()
@@ -109,6 +116,8 @@ def main():
         start_dev()
     elif args.command == "prod":
         start_prod()
+    elif args.command == "fullstack":
+        start_fullstack()
     elif args.command == "test":
         test_api()
     elif args.command == "test-memory":

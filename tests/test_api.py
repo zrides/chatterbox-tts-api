@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for the Chatterbox TTS FastAPI
+Test script for the Chatterbox TTS API
 """
 
 import requests
@@ -9,7 +9,7 @@ import time
 import os
 
 # Configuration
-API_BASE_URL = "http://localhost:5123"
+API_BASE_URL = "http://localhost:4123"
 TEST_TEXTS = [
     "Hello, this is a simple test of the text to speech system.",
     "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet and is commonly used for testing.",

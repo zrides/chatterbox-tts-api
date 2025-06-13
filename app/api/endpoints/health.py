@@ -6,10 +6,12 @@ from fastapi import APIRouter
 
 from app.models import HealthResponse
 from app.config import Config
-from app.core import get_memory_info
+from app.core import get_memory_info, add_route_aliases
 from app.core.tts_model import get_model, get_device
 
-router = APIRouter()
+# Create router with aliasing support
+base_router = APIRouter()
+router = add_route_aliases(base_router)
 
 
 @router.get(
@@ -36,4 +38,7 @@ async def health_check():
             "default_temperature": Config.TEMPERATURE
         },
         memory_info=get_memory_info()
-    ) 
+    )
+
+# Export the base router for the main app to use
+__all__ = ["base_router"] 
