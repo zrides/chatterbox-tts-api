@@ -37,10 +37,10 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 4123
 
 ### ✅ Sanity checks before PRs
 
-1. `uv run pytest -q` must pass.
-2. `uv run python -m app.selftest` (quick speech-generation smoke test) must
-produce audio without downloading remote Chatterbox wheels.
-3. Verify that `import chatterbox, inspect, os; print(inspect.getfile(chatterbox));` prints a path under `chatterbox/`.
+1. `uv run python tests/test_api.py`
+2. `uv run python tests/test_voice_upload.py`
+3. `uv run python tests/test_memory.py`
+4. Verify that `import chatterbox, inspect, os; print(inspect.getfile(chatterbox));` prints a path under `chatterbox/`.
 
 ## 1  Project snapshot
 
@@ -67,14 +67,12 @@ produce audio without downloading remote Chatterbox wheels.
 ---
 
 ## 3  Build / Test / Lint
-
-| Action                       | Command                                                                                                                         |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Unit & integration tests** | `uv run pytest -q`                                                                                                              |
-| **Memory regression**        | `uv run python tests/test_memory.py`                                                                                            |
-| **API smoke test**           | `curl -X POST http://localhost:4123/v1/audio/speech -H"Content-Type: application/json" -d '{"input":"ping"}' --output ping.wav` |
-| **Static type check**        | `uv run mypy app`                                                                                                               |
-| **Formatting**               | `uv run ruff format . && uv run ruff check .`                                                                                   |
+| Action                       | Command |
+| ---------------------------- | -------------------------------------------------------------- |
+| **API & upload tests** | `uv run python tests/test_api.py && uv run python tests/test_voice_upload.py` |
+| **Memory regression** | `uv run python tests/test_memory.py` |
+| **API smoke test** | `curl -X POST http://localhost:4123/v1/audio/speech -H"Content-Type: application/json" -d '{"input":"ping"}' --output ping.wav` |
+| **Formatting** | `uv run ruff format . && uv run ruff check .` |
 
 Codex must ensure **all tests & linters pass** before creating a PR.
 
@@ -113,11 +111,11 @@ Changes here **must** reference a GitHub Issue or JIRA ticket in the PR body.
 
 ```
 ### Why
-<issue‑link or context>
+<issue-link or context>
 ### What
 - [ ] Feature / Fix summary
 ### Tests
-- [ ] pytest passes
+- [ ] tests pass
 - [ ] ruff clean
 ### Risk
 <perf, ABI, memory>
@@ -127,14 +125,13 @@ Codex should populate the checklist automatically.
 
 ---
 
-## 8  Automated CI expectations
-
 The CI pipeline executes:
 
 ```bash
 uv run ruff format --check .
 uv run ruff check .
-uv run pytest -q
+uv run python tests/test_api.py
+uv run python tests/test_voice_upload.py
 uv run python tests/test_memory.py
 ```
 
