@@ -17,7 +17,7 @@
   </a>
 </p>
 
-**FastAPI**-powered REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities
+**FastAPI**-powered REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities and additional features on top of the `chatterbox-tts` base package.
 
 ## Features
 
@@ -766,10 +766,8 @@ curl http://localhost:4123/openapi.json
 ## Support
 
 - 📖 **Documentation**: See [API Documentation](docs/API_README.md) and [Docker Guide](docs/DOCKER_README.md)
-- 🔄 **Migration**: Upgrading to uv? See the [uv Migration Guide](docs/UV_MIGRATION.md)
-- 🚀 **FastAPI**: New to FastAPI? Check the [FastAPI docs](https://fastapi.tiangolo.com/)
 - 🐛 **Issues**: Report bugs and feature requests via GitHub issues
-- 💬 **Discord**: Join the [Chatterbox TTS Discord](https://discord.gg/XqS7RxUp) or the [Discord for this project](http://chatterboxtts.com/discord)
+- 💬 **Discord**: [Join the Discord for this project](http://chatterboxtts.com/discord)
 
 ---
 
