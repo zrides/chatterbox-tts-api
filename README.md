@@ -23,6 +23,7 @@
 
 🚀 **OpenAI-Compatible API** - Drop-in replacement for OpenAI's TTS API  
 ⚡ **FastAPI Performance** - High-performance async API with automatic documentation  
+🎨 **React Frontend** - Includes an optional, ready-to-use web interface  
 🎭 **Voice Cloning** - Use your own voice samples for personalized speech  
 🎤 **Voice Upload** - Upload custom voice files per request or use configured default  
 📝 **Smart Text Processing** - Automatic chunking for long texts  
@@ -54,7 +55,7 @@ uv sync
 cp .env.example .env
 
 # Start the API with FastAPI
-uv run uvicorn app.main:app --host 0.0.0.0 --port 5123
+uv run uvicorn app.main:app --host 0.0.0.0 --port 4123
 # Or use the main script
 uv run main.py
 ```
@@ -82,7 +83,7 @@ cp .env.example .env
 # cp your-voice.mp3 voice-sample.mp3
 
 # Start the API with FastAPI
-uvicorn app.main:app --host 0.0.0.0 --port 5123
+uvicorn app.main:app --host 0.0.0.0 --port 4123
 # Or use the main script
 python main.py
 ```
@@ -101,28 +102,91 @@ cp .env.example.docker .env  # Docker-specific paths, ready to use
 # Or: cp .env.example .env    # Local development paths, needs customization
 
 # Choose your deployment method:
+
+# API Only (default)
 docker compose -f docker/docker-compose.yml up -d             # Standard (pip-based)
 docker compose -f docker/docker-compose.uv.yml up -d          # uv-optimized (faster builds)
 docker compose -f docker/docker-compose.gpu.yml up -d         # Standard + GPU
 docker compose -f docker/docker-compose.uv.gpu.yml up -d      # uv + GPU (recommended for GPU users)
 docker compose -f docker/docker-compose.cpu.yml up -d         # CPU-only
 
+# API + Frontend (add --profile frontend to any of the above)
+docker compose -f docker/docker-compose.yml --profile frontend up -d             # Standard + Frontend
+docker compose -f docker/docker-compose.gpu.yml --profile frontend up -d         # GPU + Frontend
+docker compose -f docker/docker-compose.uv.gpu.yml --profile frontend up -d      # uv + GPU + Frontend
+
 # Watch the logs as it initializes (the first use of TTS takes the longest)
 docker logs chatterbox-tts-api -f
 
 # Test the API
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Hello from Chatterbox TTS!"}' \
   --output test.wav
 ```
 
+<details>
+<summary><strong>🚀 Running with the Web UI (Full Stack)</strong></summary>
+
+This project includes an optional React-based web UI. Use Docker Compose profiles to easily opt in or out of the frontend:
+
+### With Docker Compose Profiles
+
+```bash
+# API only (default behavior)
+docker compose -f docker/docker-compose.yml up -d
+
+# API + Frontend + Web UI (with --profile frontend)
+docker compose -f docker/docker-compose.yml --profile frontend up -d
+
+# Or use the convenient helper script for fullstack:
+python start.py fullstack
+
+# Same pattern works with all deployment variants:
+docker compose -f docker/docker-compose.gpu.yml --profile frontend up -d    # GPU + Frontend
+docker compose -f docker/docker-compose.uv.yml --profile frontend up -d     # uv + Frontend
+docker compose -f docker/docker-compose.cpu.yml --profile frontend up -d    # CPU + Frontend
+```
+
+### Local Development
+
+For local development, you can run the API and frontend separately:
+
+```bash
+# Start the API first (follow earlier instructions)
+# Then run the frontend:
+cd frontend && npm run dev
+```
+
+Click the link provided from Vite to access the web UI.
+
+### Build for Production
+
+Build the frontend for production deployment:
+
+```bash
+cd frontend && npm run build
+```
+
+You can then access it directly from your local file system at `/dist/index.html`.
+
+### Port Configuration
+
+- **API Only**: Accessible at `http://localhost:4123` (direct API access)
+- **With Frontend**: Web UI at `http://localhost:4321`, API requests routed via proxy
+
+The frontend uses a reverse proxy to route requests, so when running with `--profile frontend`, the web interface will be available at `http://localhost:4321` while the API runs behind the proxy.
+
+</details>
+
 ## API Usage
 
 ### Basic Text-to-Speech (Default Voice)
 
+This endpoint works for both the API-only and full-stack setups.
+
 ```bash
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Your text here"}' \
   --output speech.wav
@@ -131,7 +195,7 @@ curl -X POST http://localhost:5123/v1/audio/speech \
 ### Using Custom Parameters (JSON)
 
 ```bash
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Dramatic speech!", "exaggeration": 1.2, "cfg_weight": 0.3, "temperature": 0.9}' \
   --output dramatic.wav
@@ -142,7 +206,7 @@ curl -X POST http://localhost:5123/v1/audio/speech \
 Upload your own voice sample for personalized speech:
 
 ```bash
-curl -X POST http://localhost:5123/v1/audio/speech/upload \
+curl -X POST http://localhost:4123/v1/audio/speech/upload \
   -F "input=Hello with my custom voice!" \
   -F "exaggeration=0.8" \
   -F "voice_file=@my_voice.mp3" \
@@ -152,7 +216,7 @@ curl -X POST http://localhost:5123/v1/audio/speech/upload \
 ### With Custom Parameters and Voice Upload
 
 ```bash
-curl -X POST http://localhost:5123/v1/audio/speech/upload \
+curl -X POST http://localhost:4123/v1/audio/speech/upload \
   -F "input=Dramatic speech!" \
   -F "exaggeration=1.2" \
   -F "cfg_weight=0.3" \
@@ -161,15 +225,16 @@ curl -X POST http://localhost:5123/v1/audio/speech/upload \
   --output dramatic.wav
 ```
 
-### Python Examples
+<details>
+<summary><strong>🐍 Python Examples</strong></summary>
 
-#### Default Voice (JSON)
+### Default Voice (JSON)
 
 ```python
 import requests
 
 response = requests.post(
-    "http://localhost:5123/v1/audio/speech",
+    "http://localhost:4123/v1/audio/speech",
     json={
         "input": "Hello world!",
         "exaggeration": 0.8
@@ -180,13 +245,13 @@ with open("output.wav", "wb") as f:
     f.write(response.content)
 ```
 
-#### Upload Endpoint (Default Voice)
+### Upload Endpoint (Default Voice)
 
 ```python
 import requests
 
 response = requests.post(
-    "http://localhost:5123/v1/audio/speech/upload",
+    "http://localhost:4123/v1/audio/speech/upload",
     data={
         "input": "Hello world!",
         "exaggeration": 0.8
@@ -197,14 +262,14 @@ with open("output.wav", "wb") as f:
     f.write(response.content)
 ```
 
-#### Custom Voice Upload
+### Custom Voice Upload
 
 ```python
 import requests
 
 with open("my_voice.mp3", "rb") as voice_file:
     response = requests.post(
-        "http://localhost:5123/v1/audio/speech/upload",
+        "http://localhost:4123/v1/audio/speech/upload",
         data={
             "input": "Hello with my custom voice!",
             "exaggeration": 0.8,
@@ -218,6 +283,8 @@ with open("my_voice.mp3", "rb") as voice_file:
 with open("custom_output.wav", "wb") as f:
     f.write(response.content)
 ```
+
+</details>
 
 ### Voice File Requirements
 
@@ -257,7 +324,7 @@ Key environment variables (see the example files for full list):
 
 | Variable            | Default              | Description                    |
 | ------------------- | -------------------- | ------------------------------ |
-| `PORT`              | `5123`               | API server port                |
+| `PORT`              | `4123`               | API server port                |
 | `EXAGGERATION`      | `0.5`                | Emotion intensity (0.25-2.0)   |
 | `CFG_WEIGHT`        | `0.5`                | Pace control (0.0-1.0)         |
 | `TEMPERATURE`       | `0.8`                | Sampling randomness (0.05-5.0) |
@@ -378,13 +445,13 @@ The API includes advanced memory management to prevent memory leaks and optimize
 
 ```bash
 # Get memory status
-curl http://localhost:5123/memory
+curl http://localhost:4123/memory
 
 # Trigger manual cleanup
-curl "http://localhost:5123/memory?cleanup=true&force_cuda_clear=true"
+curl "http://localhost:4123/memory?cleanup=true&force_cuda_clear=true"
 
 # Reset memory tracking (with confirmation)
-curl -X POST "http://localhost:5123/memory/reset?confirm=true"
+curl -X POST "http://localhost:4123/memory/reset?confirm=true"
 ```
 
 ### Memory Testing
@@ -396,7 +463,7 @@ Run the memory management test suite:
 python tests/test_memory.py  # or: uv run tests/test_memory.py
 
 # Monitor memory during testing
-watch -n 1 'curl -s http://localhost:5123/memory | jq .memory_info'
+watch -n 1 'curl -s http://localhost:4123/memory | jq .memory_info'
 ```
 
 ### Memory Optimization Tips
@@ -500,7 +567,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 # Option 6: Try uv for better dependency resolution
 uv sync
-uv run uvicorn app.main:app --host 0.0.0.0 --port 5123
+uv run uvicorn app.main:app --host 0.0.0.0 --port 4123
 ```
 
 **For local development**, install PyTorch with CUDA support:
@@ -526,7 +593,7 @@ pip install --force-reinstall typing_extensions
 
 ```bash
 # Change port
-echo "PORT=5002" >> .env
+echo "PORT=4124" >> .env
 ```
 
 **GPU not detected**
@@ -548,7 +615,7 @@ echo "MAX_CHUNK_LENGTH=200" >> .env
 ```bash
 # Clear cache and retry
 rm -rf models/
-uvicorn app.main:app --host 0.0.0.0 --port 5123  # or: uv run main.py
+uvicorn app.main:app --host 0.0.0.0 --port 4123  # or: uv run main.py
 ```
 
 **FastAPI startup issues**
@@ -558,7 +625,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 5123  # or: uv run main.py
 uvicorn --version
 
 # Run with verbose logging
-uvicorn app.main:app --host 0.0.0.0 --port 5123 --log-level debug
+uvicorn app.main:app --host 0.0.0.0 --port 4123 --log-level debug
 
 # Alternative startup method
 python main.py
@@ -574,7 +641,7 @@ python main.py
 This project follows a clean, modular architecture for maintainability:
 
 ```
-app/
+app/                     # FastAPI backend application
 ├── __init__.py           # Main package
 ├── config.py            # Configuration management
 ├── main.py              # FastAPI application
@@ -594,8 +661,14 @@ app/
         ├── memory.py    # Memory management
         └── config.py    # Configuration
 
+frontend/                # React frontend application
+├── src/
+├── Dockerfile
+├── nginx.conf          # Integrated proxy configuration
+└── package.json
+
 docker/                  # Docker files consolidated
-├── Dockerfile          # Standard Docker image
+├── Dockerfile
 ├── Dockerfile.uv       # uv-optimized image
 ├── Dockerfile.gpu      # GPU-enabled image
 ├── Dockerfile.cpu      # CPU-only image
@@ -623,6 +696,9 @@ python start.py dev
 # Production mode
 python start.py prod
 
+# Full Stack mode with UI (using Docker)
+python start.py fullstack
+
 # Run tests
 python start.py test
 
@@ -640,7 +716,7 @@ pip install -e .
 uv sync --extra dev
 
 # Start with auto-reload (FastAPI development)
-uvicorn app.main:app --host 0.0.0.0 --port 5123 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 4123 --reload
 
 # Or use the main script
 python main.py
@@ -659,10 +735,10 @@ python tests/test_api.py  # or: uv run tests/test_api.py
 python tests/test_memory.py
 
 # Test specific endpoint
-curl http://localhost:5123/health
+curl http://localhost:4123/health
 
 # Check API documentation
-curl http://localhost:5123/openapi.json
+curl http://localhost:4123/openapi.json
 ```
 
 ### FastAPI Development Features

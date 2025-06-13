@@ -15,7 +15,7 @@ class Config:
     
     # Server settings
     HOST = os.getenv('HOST', '0.0.0.0')
-    PORT = int(os.getenv('PORT', 5123))
+    PORT = int(os.getenv('PORT', 4123))
     
     # TTS Model settings
     EXAGGERATION = float(os.getenv('EXAGGERATION', 0.5))
@@ -35,6 +35,9 @@ class Config:
     MEMORY_CLEANUP_INTERVAL = int(os.getenv('MEMORY_CLEANUP_INTERVAL', 5))
     CUDA_CACHE_CLEAR_INTERVAL = int(os.getenv('CUDA_CACHE_CLEAR_INTERVAL', 3))
     ENABLE_MEMORY_MONITORING = os.getenv('ENABLE_MEMORY_MONITORING', 'true').lower() == 'true'
+    
+    # CORS settings
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*')
     
     @classmethod
     def validate(cls):

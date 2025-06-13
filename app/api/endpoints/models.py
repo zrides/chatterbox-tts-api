@@ -5,17 +5,19 @@ Model listing endpoints (OpenAI compatibility)
 from fastapi import APIRouter
 
 from app.models import ModelsResponse, ModelInfo
+from app.core import add_route_aliases
 
-router = APIRouter()
+# Create router with aliasing support
+base_router = APIRouter()
+router = add_route_aliases(base_router)
 
 
 @router.get(
-    "/v1/models",
+    "/models",
     response_model=ModelsResponse,
     summary="List models",
     description="List available models (OpenAI API compatibility)"
 )
-@router.get("/models", response_model=ModelsResponse, include_in_schema=False)  # Legacy endpoint
 async def list_models():
     """List available models (OpenAI API compatibility)"""
     return ModelsResponse(
@@ -28,4 +30,7 @@ async def list_models():
                 owned_by="resemble-ai"
             )
         ]
-    ) 
+    )
+
+# Export the base router for the main app to use
+__all__ = ["base_router"] 

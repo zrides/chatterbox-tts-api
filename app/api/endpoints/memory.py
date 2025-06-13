@@ -5,9 +5,11 @@ Memory management endpoints
 import torch
 from fastapi import APIRouter
 
-from app.core import get_memory_info, cleanup_memory
+from app.core import get_memory_info, cleanup_memory, add_route_aliases
 
-router = APIRouter()
+# Create router with aliasing support
+base_router = APIRouter()
+router = add_route_aliases(base_router)
 
 # Global request counter for memory tracking
 REQUEST_COUNTER = 0
@@ -98,4 +100,7 @@ async def reset_memory_tracking(confirm: bool = False):
             "status": "error",
             "error": str(e),
             "memory_info": get_memory_info()
-        } 
+        }
+
+# Export the base router for the main app to use
+__all__ = ["base_router"] 

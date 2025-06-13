@@ -4,10 +4,12 @@ Main FastAPI application
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.tts_model import initialize_model
 from app.api.router import api_router
+from app.config import Config
 
 
 ascii_art = r"""
@@ -39,6 +41,22 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan
+)
+
+# Configure CORS
+cors_origins = Config.CORS_ORIGINS
+if cors_origins == "*":
+    allowed_origins = ["*"]
+else:
+    # Split comma-separated origins and strip whitespace
+    allowed_origins = [origin.strip() for origin in cors_origins.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include the main router

@@ -1,16 +1,17 @@
 version: '3.8'
 
 services:
+  # Main API Service (always included)
   chatterbox-tts:
     build:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: chatterbox-tts-api
     ports:
-      - '${PORT:-5123}:${PORT:-5123}'
+      - '${PORT:-4123}:${PORT:-4123}'
     environment:
       # API Configuration
-      - PORT=${PORT:-5123}
+      - PORT=${PORT:-4123}
       - HOST=${HOST:-0.0.0.0}
 
       # TTS Model Settings
@@ -26,10 +27,6 @@ services:
       - VOICE_SAMPLE_PATH=/app/voice-sample.mp3
       - DEVICE=${DEVICE:-auto}
       - MODEL_CACHE_DIR=${MODEL_CACHE_DIR:-/cache}
-
-      # Flask Settings
-      - FLASK_ENV=${FLASK_ENV:-production}
-      - FLASK_DEBUG=${FLASK_DEBUG:-false}
 
       # Memory Settings
       - MEMORY_CLEANUP_INTERVAL=${MEMORY_CLEANUP_INTERVAL:-5}
@@ -58,11 +55,24 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:${PORT:-5123}/health']
+      test: ['CMD', 'curl', '-f', 'http://localhost:${PORT:-4123}/health']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 300s
+
+  # Frontend Service with integrated proxy (optional - requires 'frontend' profile)
+  frontend:
+    profiles: ['frontend', 'ui', 'fullstack']
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: chatterbox-tts-frontend
+    ports:
+      - '${FRONTEND_PORT:-4321}:80' # Frontend serves on port 80 internally
+    depends_on:
+      - chatterbox-tts
+    restart: unless-stopped
 
 volumes:
   chatterbox-models:

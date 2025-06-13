@@ -11,7 +11,7 @@ import concurrent.futures
 from typing import Dict, List
 
 # Configuration
-API_BASE_URL = "http://localhost:5123"
+API_BASE_URL = "http://localhost:4123"
 
 def get_memory_status() -> Dict:
     """Get current memory status from the API"""
