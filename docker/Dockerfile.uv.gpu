@@ -1,5 +1,5 @@
 # Use NVIDIA CUDA runtime as base for better GPU support
-FROM nvidia/cuda:12.4.1-runtime-ubuntu20.04
+FROM nvidia/cuda:12.8.1-runtime-ubuntu20.04
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -36,7 +36,7 @@ WORKDIR /app
 RUN uv venv --python 3.11
 
 # Install PyTorch with CUDA support using uv
-RUN uv pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+RUN uv pip install torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1 --index-url https://download.pytorch.org/whl/cu128
 
 # Install base dependencies first
 RUN uv pip install setuptools fastapi uvicorn[standard] python-dotenv python-multipart requests psutil
@@ -45,7 +45,11 @@ RUN uv pip install setuptools fastapi uvicorn[standard] python-dotenv python-mul
 # RUN uv pip install resemble-perth
 
 # Install chatterbox-tts using uv
-RUN uv pip install chatterbox-tts
+# RUN uv pip install chatterbox-tts
+
+# Install chatterbox-tts from source
+COPY chatterbox/ ./chatterbox/
+RUN uv pip install ./chatterbox
 
 # Copy application code
 COPY app/ ./app/
