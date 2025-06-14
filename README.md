@@ -180,6 +180,21 @@ The frontend uses a reverse proxy to route requests, so when running with `--pro
 
 </details>
 
+## Screenshots of Frontend (Web UI) 
+
+<div align="center">
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUhSpwm5Ei6gKtBuVviY5Gemp3UNzLcx41DJZ8" alt="Chatterbox TTS API - Frontend - Dark Mode" width="33%" />
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOU46RGqHQfc9zv2NpG3SLeQZMXj6K5yoRgbIxV" alt="Chatterbox TTS API - Frontend - Light Mode" width="33%" />
+</div>
+
+
+<div align="center">
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUt4kJ0goXPb09QmDchfSoNxgB3KLETFyvnsU5" alt="Chatterbox TTS API - Frontend Processing - Dark Mode" width="33%" />
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOU0v7EUEwi1efdOvQm6TrWKoPuX7xEl4pc8RVw" alt="Chatterbox TTS API - Frontend Processing - Light Mode" width="33%" />
+</div>
+
+> 🖼️ View screenshot of full frontend web UI — [light mode](https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUoONOy6UZv2m8CUjqGrBbDy4aXzNV9Rl1ZAgQ) / [dark mode](https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOU7RmQRTFVcR8ntzKQs0IxJ6ibFrq2hjCSadUG)
+
 ## API Usage
 
 ### Basic Text-to-Speech (Default Voice)
