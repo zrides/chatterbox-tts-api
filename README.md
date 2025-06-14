@@ -156,7 +156,7 @@ For local development, you can run the API and frontend separately:
 ```bash
 # Start the API first (follow earlier instructions)
 # Then run the frontend:
-cd frontend && npm run dev
+cd frontend && npm install && npm run dev
 ```
 
 Click the link provided from Vite to access the web UI.
@@ -166,7 +166,7 @@ Click the link provided from Vite to access the web UI.
 Build the frontend for production deployment:
 
 ```bash
-cd frontend && npm run build
+cd frontend && npm install && npm run build
 ```
 
 You can then access it directly from your local file system at `/dist/index.html`.
@@ -827,6 +827,3 @@ curl http://localhost:4123/openapi.json
 - 🐛 **Issues**: Report bugs and feature requests via GitHub issues
 - 💬 **Discord**: [Join the Discord for this project](http://chatterboxtts.com/discord)
 
----
-
-Made with ♥️ for the open source community
