@@ -183,10 +183,9 @@ The frontend uses a reverse proxy to route requests, so when running with `--pro
 ## Screenshots of Frontend (Web UI) 
 
 <div align="center">
-  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUhSpwm5Ei6gKtBuVviY5Gemp3UNzLcx41DJZ8" alt="Chatterbox TTS API - Frontend - Dark Mode" width="33%" />
-  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOU46RGqHQfc9zv2NpG3SLeQZMXj6K5yoRgbIxV" alt="Chatterbox TTS API - Frontend - Light Mode" width="33%" />
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUS62gM9PGyDAvTxnjVKQO0Zz5uI6Jg4UodHEa" alt="Chatterbox TTS API - Frontend - Dark Mode" width="33%" />
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUXYXF1ekWhMaPnZ3rSTRIEkDzvKwGU05qjAol" alt="Chatterbox TTS API - Frontend - Light Mode" width="33%" />
 </div>
-
 
 <div align="center">
   <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUt4kJ0goXPb09QmDchfSoNxgB3KLETFyvnsU5" alt="Chatterbox TTS API - Frontend Processing - Dark Mode" width="33%" />
