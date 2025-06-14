@@ -8,7 +8,11 @@ from .responses import (
     ModelInfo,
     ModelsResponse,
     ConfigResponse,
-    ErrorResponse
+    ErrorResponse,
+    TTSProgressResponse,
+    TTSStatusResponse,
+    TTSStatisticsResponse,
+    APIInfoResponse
 )
 
 __all__ = [
@@ -17,5 +21,9 @@ __all__ = [
     "ModelInfo", 
     "ModelsResponse",
     "ConfigResponse",
-    "ErrorResponse"
+    "ErrorResponse",
+    "TTSProgressResponse",
+    "TTSStatusResponse",
+    "TTSStatisticsResponse",
+    "APIInfoResponse"
 ] 

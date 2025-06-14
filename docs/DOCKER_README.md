@@ -41,7 +41,7 @@ This guide covers how to run the Chatterbox TTS FastAPI using Docker and Docker 
 3. **Test the API:**
 
    ```bash
-   curl -X POST http://localhost:5123/v1/audio/speech \
+   curl -X POST http://localhost:4123/v1/audio/speech \
      -H "Content-Type: application/json" \
      -d '{"input": "Hello from Docker!"}' \
      --output test.wav
@@ -51,10 +51,10 @@ This guide covers how to run the Chatterbox TTS FastAPI using Docker and Docker 
 
    ```bash
    # Interactive Swagger UI
-   open http://localhost:5123/docs
+   open http://localhost:4123/docs
 
    # Alternative ReDoc documentation
-   open http://localhost:5123/redoc
+   open http://localhost:4123/redoc
    ```
 
 ### Docker Compose Variants
@@ -76,7 +76,7 @@ docker build -t chatterbox-tts-api .
 # Run the container
 docker run -d \
   --name chatterbox-tts-api \
-  -p 5123:5123 \
+  -p 4123:4123 \
   -v ./voice-sample.mp3:/app/voice-sample.mp3:ro \
   -v chatterbox-models:/cache \
   -e EXAGGERATION=0.7 \
@@ -142,7 +142,7 @@ nano .env  # or your preferred editor
 
 | Variable            | Default              | Description                     |
 | ------------------- | -------------------- | ------------------------------- |
-| `PORT`              | `5123`               | API server port                 |
+| `PORT`              | `4123`               | API server port                 |
 | `EXAGGERATION`      | `0.5`                | Emotion intensity (0.25-2.0)    |
 | `CFG_WEIGHT`        | `0.5`                | Pace control (0.0-1.0)          |
 | `TEMPERATURE`       | `0.8`                | Sampling temperature (0.05-5.0) |
@@ -209,13 +209,13 @@ services:
   chatterbox-tts:
     build: .
     ports:
-      - '5123:5123'
+      - '4123:4123'
     environment:
       - EXAGGERATION=0.7
     volumes:
       - .:/app
       - chatterbox-models:/cache
-    command: uvicorn api:app --host=0.0.0.0 --port=5123 --reload
+    command: uvicorn api:app --host=0.0.0.0 --port=4123 --reload
 ```
 
 ```bash
@@ -231,7 +231,7 @@ services:
     image: chatterbox-tts:latest
     restart: always
     ports:
-      - '5123:5123'
+      - '4123:4123'
     environment:
       - EXAGGERATION=0.5
       - CFG_WEIGHT=0.5
@@ -253,13 +253,13 @@ services:
   chatterbox-tts-1:
     build: .
     ports:
-      - '5123:5123'
+      - '4123:4123'
     # ... config
 
   chatterbox-tts-2:
     build: .
     ports:
-      - '5124:5123'
+      - '5124:4123'
     # ... config
 
   nginx:
@@ -292,13 +292,13 @@ docker compose logs --tail=100 chatterbox-tts
 docker compose ps
 
 # Manual health check
-curl http://localhost:5123/health
+curl http://localhost:4123/health
 
 # Get configuration
-curl http://localhost:5123/config
+curl http://localhost:4123/config
 
 # Check API documentation
-curl http://localhost:5123/docs
+curl http://localhost:4123/docs
 ```
 
 ### Resource Monitoring
@@ -367,7 +367,7 @@ docker compose exec chatterbox-tts ps aux | grep uvicorn
 docker compose logs chatterbox-tts | grep "Application startup complete"
 
 # Test API endpoints
-curl http://localhost:5123/openapi.json
+curl http://localhost:4123/openapi.json
 ```
 
 ### Performance Tuning
@@ -399,7 +399,7 @@ TEMPERATURE=0.5       # More deterministic
 ```env
 # Production settings
 HOST=0.0.0.0
-PORT=5123
+PORT=4123
 
 # Development settings (Docker dev setup)
 UVICORN_RELOAD=true
@@ -482,10 +482,10 @@ docker compose exec chatterbox-tts python tests/test_api.py
 docker compose exec chatterbox-tts python -c "
 import requests
 # Test documentation endpoints
-resp = requests.get('http://localhost:5123/docs')
+resp = requests.get('http://localhost:4123/docs')
 print(f'Docs Status: {resp.status_code}')
 
-resp = requests.get('http://localhost:5123/openapi.json')
+resp = requests.get('http://localhost:4123/openapi.json')
 print(f'OpenAPI Status: {resp.status_code}')
 "
 ```
@@ -495,7 +495,7 @@ print(f'OpenAPI Status: {resp.status_code}')
 ```bash
 # Stress test with multiple requests
 for i in {1..10}; do
-  curl -X POST http://localhost:5123/v1/audio/speech \
+  curl -X POST http://localhost:4123/v1/audio/speech \
     -H "Content-Type: application/json" \
     -d '{"input": "Performance test '$i'"}' \
     --output test_$i.wav &
@@ -507,13 +507,13 @@ wait
 
 ```bash
 # Test interactive docs
-curl -f http://localhost:5123/docs
+curl -f http://localhost:4123/docs
 
 # Test API schema
-curl http://localhost:5123/openapi.json | jq '.info.title'
+curl http://localhost:4123/openapi.json | jq '.info.title'
 
 # Test ReDoc
-curl -f http://localhost:5123/redoc
+curl -f http://localhost:4123/redoc
 ```
 
 ## 📝 Advanced Configuration
@@ -556,8 +556,8 @@ jobs:
         run: |
           docker compose up -d
           sleep 30
-          curl -f http://localhost:5123/health
-          curl -f http://localhost:5123/docs
+          curl -f http://localhost:4123/health
+          curl -f http://localhost:4123/docs
           docker compose down
 ```
 

@@ -1,6 +1,6 @@
 [project]
 name = "chatterbox-tts-api"
-version = "1.0.0"
+version = "1.2.0"
 description = "REST API for Chatterbox TTS with OpenAI compatibility"
 authors = [{ name = "Travis Van Nimwegen", email = "tts@travis2.com" }]
 readme = "README.md"

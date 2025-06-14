@@ -16,7 +16,8 @@ from app.models import TTSRequest, ErrorResponse
 from app.config import Config
 from app.core import (
     get_memory_info, cleanup_memory, safe_delete_tensors,
-    split_text_into_chunks, concatenate_audio_chunks, add_route_aliases
+    split_text_into_chunks, concatenate_audio_chunks, add_route_aliases,
+    TTSStatus, start_tts_request, update_tts_status
 )
 from app.core.tts_model import get_model
 
@@ -79,16 +80,35 @@ async def generate_speech_internal(
     global REQUEST_COUNTER
     REQUEST_COUNTER += 1
     
+    # Start TTS request tracking
+    voice_source = "uploaded file" if voice_sample_path != Config.VOICE_SAMPLE_PATH else "default"
+    request_id = start_tts_request(
+        text=text,
+        voice_source=voice_source,
+        parameters={
+            "exaggeration": exaggeration,
+            "cfg_weight": cfg_weight,
+            "temperature": temperature,
+            "voice_sample_path": voice_sample_path
+        }
+    )
+    
+    update_tts_status(request_id, TTSStatus.INITIALIZING, "Checking model availability")
+    
     model = get_model()
     if model is None:
+        update_tts_status(request_id, TTSStatus.ERROR, error_message="Model not loaded")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"message": "Model not loaded", "type": "model_error"}}
         )
-    
+
     # Log memory usage before processing
+    initial_memory = None
     if Config.ENABLE_MEMORY_MONITORING:
         initial_memory = get_memory_info()
+        update_tts_status(request_id, TTSStatus.INITIALIZING, "Monitoring initial memory", 
+                        memory_usage=initial_memory)
         print(f"📊 Request #{REQUEST_COUNTER} - Initial memory: CPU {initial_memory['cpu_memory_mb']:.1f}MB", end="")
         if torch.cuda.is_available():
             print(f", GPU {initial_memory['gpu_memory_allocated_mb']:.1f}MB allocated")
@@ -96,7 +116,10 @@ async def generate_speech_internal(
             print()
     
     # Validate total text length
+    update_tts_status(request_id, TTSStatus.PROCESSING_TEXT, "Validating text length")
     if len(text) > Config.MAX_TOTAL_LENGTH:
+        update_tts_status(request_id, TTSStatus.ERROR, 
+                        error_message=f"Input text too long. Maximum {Config.MAX_TOTAL_LENGTH} characters allowed.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
@@ -106,7 +129,7 @@ async def generate_speech_internal(
                 }
             }
         )
-    
+
     audio_chunks = []
     final_audio = None
     buffer = None
@@ -118,6 +141,7 @@ async def generate_speech_internal(
         temperature = temperature if temperature is not None else Config.TEMPERATURE
         
         # Split text into chunks
+        update_tts_status(request_id, TTSStatus.CHUNKING, "Splitting text into chunks")
         chunks = split_text_into_chunks(text, Config.MAX_CHUNK_LENGTH)
         
         voice_source = "uploaded file" if voice_sample_path != Config.VOICE_SAMPLE_PATH else "configured sample"
@@ -126,10 +150,19 @@ async def generate_speech_internal(
         print(f"  - CFG Weight: {cfg_weight}")
         print(f"  - Temperature: {temperature}")
         
+        # Update status with chunk information
+        update_tts_status(request_id, TTSStatus.GENERATING_AUDIO, "Starting audio generation", 
+                        current_chunk=0, total_chunks=len(chunks))
+        
         # Generate audio for each chunk with memory management
         loop = asyncio.get_event_loop()
         
         for i, chunk in enumerate(chunks):
+            # Update progress
+            current_step = f"Generating audio for chunk {i+1}/{len(chunks)}"
+            update_tts_status(request_id, TTSStatus.GENERATING_AUDIO, current_step, 
+                            current_chunk=i+1, total_chunks=len(chunks))
+            
             print(f"Generating audio for chunk {i+1}/{len(chunks)}: '{chunk[:50]}{'...' if len(chunk) > 50 else ''}'")
             
             # Use torch.no_grad() to prevent gradient accumulation
@@ -161,6 +194,7 @@ async def generate_speech_internal(
         
         # Concatenate all chunks with memory management
         if len(audio_chunks) > 1:
+            update_tts_status(request_id, TTSStatus.CONCATENATING, "Concatenating audio chunks")
             print("Concatenating audio chunks...")
             with torch.no_grad():
                 final_audio = concatenate_audio_chunks(audio_chunks, model.sr)
@@ -168,6 +202,7 @@ async def generate_speech_internal(
             final_audio = audio_chunks[0]
         
         # Convert to WAV format
+        update_tts_status(request_id, TTSStatus.FINALIZING, "Converting to WAV format")
         buffer = io.BytesIO()
         
         # Ensure final_audio is on CPU for saving
@@ -179,11 +214,15 @@ async def generate_speech_internal(
         ta.save(buffer, final_audio_cpu, model.sr, format="wav")
         buffer.seek(0)
         
+        # Mark as completed
+        update_tts_status(request_id, TTSStatus.COMPLETED, "Audio generation completed")
         print(f"✓ Audio generation completed. Size: {len(buffer.getvalue()):,} bytes")
         
         return buffer
         
     except Exception as e:
+        # Update status with error
+        update_tts_status(request_id, TTSStatus.ERROR, error_message=f"TTS generation failed: {str(e)}")
         print(f"✗ TTS generation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -71,13 +71,13 @@ Successfully implemented voice file upload functionality for the Chatterbox TTS 
 
 ```bash
 # JSON (legacy)
-curl -X POST http://localhost:5123/v1/audio/speech/json \
+curl -X POST http://localhost:4123/v1/audio/speech/json \
   -H "Content-Type: application/json" \
   -d '{"input": "Hello world!"}' \
   --output output.wav
 
 # Form data (new)
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -F "input=Hello world!" \
   --output output.wav
 ```
@@ -85,7 +85,7 @@ curl -X POST http://localhost:5123/v1/audio/speech \
 ### Custom Voice Upload
 
 ```bash
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -F "input=Hello with my custom voice!" \
   -F "exaggeration=0.8" \
   -F "voice_file=@my_voice.mp3" \
@@ -100,7 +100,7 @@ import requests
 # With custom voice upload
 with open("my_voice.mp3", "rb") as voice_file:
     response = requests.post(
-        "http://localhost:5123/v1/audio/speech",
+        "http://localhost:4123/v1/audio/speech",
         data={
             "input": "Hello with my custom voice!",
             "exaggeration": 0.8,
@@ -132,7 +132,7 @@ with open("output.wav", "wb") as f:
 docker compose -f docker/docker-compose.yml up -d
 
 # Test voice upload
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -F "input=Hello from Docker!" \
   -F "voice_file=@voice-sample.mp3" \
   --output docker_test.wav
@@ -187,9 +187,9 @@ python tests/test_api.py
 
 The API documentation is automatically updated and available at:
 
-- **Swagger UI**: http://localhost:5123/docs
-- **ReDoc**: http://localhost:5123/redoc
-- **OpenAPI Schema**: http://localhost:5123/openapi.json
+- **Swagger UI**: http://localhost:4123/docs
+- **ReDoc**: http://localhost:4123/redoc
+- **OpenAPI Schema**: http://localhost:4123/openapi.json
 
 The documentation now includes:
 

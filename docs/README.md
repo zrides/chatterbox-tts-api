@@ -57,7 +57,7 @@ All existing API endpoints remain fully compatible!
 - 🐛 **Issues**: [GitHub Issues](https://github.com/travisvn/chatterbox-tts-api/issues)
 - 💬 **Discord**: [Project Discord](https://readaloudai.com/discord)
 - 📖 **Main README**: [Back to main documentation](../README.md)
-- 📚 **API Docs**: [Interactive documentation](http://localhost:5123/docs) (when running locally)
+- 📚 **API Docs**: [Interactive documentation](http://localhost:4123/docs) (when running locally)
 
 ---
 

@@ -45,7 +45,7 @@ nano .env  # Edit with your preferred settings
 
 Key environment variables:
 
-- `PORT=5123` - API server port
+- `PORT=4123` - API server port
 - `EXAGGERATION=0.5` - Default emotion intensity (0.25-2.0)
 - `CFG_WEIGHT=0.5` - Default pace control (0.0-1.0)
 - `TEMPERATURE=0.8` - Default sampling temperature (0.05-5.0)
@@ -60,29 +60,29 @@ Start the API server:
 
 ```bash
 # Method 1: Direct uvicorn (recommended for development)
-uvicorn app.main:app --host 0.0.0.0 --port 5123
+uvicorn app.main:app --host 0.0.0.0 --port 4123
 
 # Method 2: Using the main script
 python main.py
 
 # Method 3: With auto-reload for development
-uvicorn app.main:app --host 0.0.0.0 --port 5123 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 4123 --reload
 ```
 
 The server will:
 
 - Automatically detect the best available device (CUDA, MPS, or CPU)
 - Load the Chatterbox TTS model asynchronously
-- Start the FastAPI server on `http://localhost:5123` (or your configured port)
+- Start the FastAPI server on `http://localhost:4123` (or your configured port)
 - Provide interactive documentation at `/docs` and `/redoc`
 
 ### API Documentation
 
 Once running, you can access:
 
-- **Interactive API Docs (Swagger UI)**: http://localhost:5123/docs
-- **Alternative Documentation (ReDoc)**: http://localhost:5123/redoc
-- **OpenAPI Schema**: http://localhost:5123/openapi.json
+- **Interactive API Docs (Swagger UI)**: http://localhost:4123/docs
+- **Alternative Documentation (ReDoc)**: http://localhost:4123/redoc
+- **OpenAPI Schema**: http://localhost:4123/openapi.json
 
 ## API Endpoints
 
@@ -121,7 +121,7 @@ Generate speech from text using the Chatterbox TTS model.
 **Example:**
 
 ```bash
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Hello, this is a test of the text to speech system."}' \
   --output speech.wav
@@ -130,7 +130,7 @@ curl -X POST http://localhost:5123/v1/audio/speech \
 **With custom parameters:**
 
 ```bash
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Dramatic speech!", "exaggeration": 1.2, "cfg_weight": 0.3}' \
   --output dramatic.wav
@@ -194,7 +194,7 @@ Get current configuration (useful for debugging).
 {
   "server": {
     "host": "0.0.0.0",
-    "port": 5123
+    "port": 4123
   },
   "model": {
     "device": "cuda",
@@ -292,7 +292,7 @@ You can configure the API through environment variables or by modifying `.env.ex
 
 ```bash
 # Server Configuration
-PORT=5123
+PORT=4123
 HOST=0.0.0.0
 
 # TTS Model Settings
@@ -346,7 +346,7 @@ docker compose up -d
 
 ```bash
 docker build -t chatterbox-tts .
-docker run -d -p 5123:5123 \
+docker run -d -p 4123:4123 \
   -v ./voice-sample.mp3:/app/voice-sample.mp3:ro \
   -e EXAGGERATION=0.7 \
   chatterbox-tts
@@ -378,7 +378,7 @@ import requests
 
 # Basic request
 response = requests.post(
-    "http://localhost:5123/v1/audio/speech",
+    "http://localhost:4123/v1/audio/speech",
     json={"input": "Hello world!"}
 )
 
@@ -387,7 +387,7 @@ with open("output.wav", "wb") as f:
 
 # With custom parameters and validation
 response = requests.post(
-    "http://localhost:5123/v1/audio/speech",
+    "http://localhost:4123/v1/audio/speech",
     json={
         "input": "Exciting news!",
         "exaggeration": 0.8,
@@ -404,7 +404,7 @@ if response.status_code == 422:
 ### JavaScript/Node.js
 
 ```javascript
-const response = await fetch('http://localhost:5123/v1/audio/speech', {
+const response = await fetch('http://localhost:4123/v1/audio/speech', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -426,19 +426,19 @@ if (response.status === 422) {
 
 ```bash
 # Basic usage
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Your text here"}' \
   --output output.wav
 
 # With custom parameters
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Dramatic text!", "exaggeration": 1.0, "cfg_weight": 0.3}' \
   --output dramatic.wav
 
 # Test the interactive documentation
-curl http://localhost:5123/docs
+curl http://localhost:4123/docs
 ```
 
 ## Development Features
@@ -455,10 +455,10 @@ curl http://localhost:5123/docs
 
 ```bash
 # Start with auto-reload
-uvicorn app.main:app --host 0.0.0.0 --port 5123 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 4123 --reload
 
 # Or with verbose logging
-uvicorn app.main:app --host 0.0.0.0 --port 5123 --log-level debug
+uvicorn app.main:app --host 0.0.0.0 --port 4123 --log-level debug
 ```
 
 ## Troubleshooting
@@ -481,7 +481,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 5123 --log-level debug
 uvicorn --version
 
 # Run with verbose logging
-uvicorn app.main:app --host 0.0.0.0 --port 5123 --log-level debug
+uvicorn app.main:app --host 0.0.0.0 --port 4123 --log-level debug
 
 # Alternative startup method
 python main.py
@@ -495,16 +495,16 @@ Visit `/docs` to see the interactive API documentation and test your requests.
 
 ```bash
 # Check if API is running
-curl http://localhost:5123/health
+curl http://localhost:4123/health
 
 # View current configuration
-curl http://localhost:5123/config
+curl http://localhost:4123/config
 
 # Check API documentation
-curl http://localhost:5123/openapi.json
+curl http://localhost:4123/openapi.json
 
 # Test with simple text
-curl -X POST http://localhost:5123/v1/audio/speech \
+curl -X POST http://localhost:4123/v1/audio/speech \
   -H "Content-Type: application/json" \
   -d '{"input": "Test"}' \
   --output test.wav

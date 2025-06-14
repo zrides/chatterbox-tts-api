@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Play, Pause, Download } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 interface AudioPlayerProps {
   audioUrl: string | null;
@@ -67,30 +68,34 @@ export default function AudioPlayer({ audioUrl }: AudioPlayerProps) {
   if (!audioUrl) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-      <h3 className="text-lg font-medium text-gray-800 dark:text-white mb-4">Generated Audio</h3>
-      <div className="flex items-center gap-4">
-        <button
-          onClick={handlePlayPause}
-          className="bg-green-600 hover:bg-green-700 text-white p-3 rounded-full transition-colors duration-300 shadow-lg hover:shadow-xl"
-        >
-          {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-        </button>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Generated Audio</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handlePlayPause}
+            className="bg-green-600 hover:bg-green-700 text-white p-3 rounded-full transition-colors duration-300 shadow-lg hover:shadow-xl"
+          >
+            {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+          </button>
 
-        <audio
-          ref={audioRef}
-          src={audioUrl}
-          className="flex-1 dark:[&::-webkit-media-controls-panel]:bg-gray-700"
-          controls
-        />
+          <audio
+            ref={audioRef}
+            src={audioUrl}
+            className="flex-1 dark:[&::-webkit-media-controls-panel]:bg-gray-700"
+            controls
+          />
 
-        <button
-          onClick={handleDownload}
-          className="bg-gray-600 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 text-white p-3 rounded-full transition-colors duration-300 shadow-lg hover:shadow-xl"
-        >
-          <Download className="w-5 h-5" />
-        </button>
-      </div>
-    </div>
+          <button
+            onClick={handleDownload}
+            className="bg-muted hover:bg-accent text-muted-foreground hover:text-accent-foreground p-3 rounded-full transition-colors duration-300 shadow-lg hover:shadow-xl"
+          >
+            <Download className="w-5 h-5" />
+          </button>
+        </div>
+      </CardContent>
+    </Card>
   );
 } 

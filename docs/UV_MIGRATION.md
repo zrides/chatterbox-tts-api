@@ -120,7 +120,7 @@ pip install uv
 
 4. **Run the FastAPI server**:
    ```bash
-   uv run uvicorn app.main:app --host 0.0.0.0 --port 5123
+   uv run uvicorn app.main:app --host 0.0.0.0 --port 4123
    # or
    uv run main.py
    ```
@@ -194,7 +194,7 @@ UV_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cu124 uv sync
 # Health check
 uv run python -c "
 import requests
-r = requests.get('http://localhost:5123/health')
+r = requests.get('http://localhost:4123/health')
 print(f'Status: {r.status_code}')
 print(r.json())
 "
@@ -202,7 +202,7 @@ print(r.json())
 # Test FastAPI documentation
 uv run python -c "
 import requests
-r = requests.get('http://localhost:5123/docs')
+r = requests.get('http://localhost:4123/docs')
 print(f'Docs available: {r.status_code == 200}')
 "
 
@@ -236,7 +236,7 @@ time pip install -r requirements.txt
 
 ```bash
 # Start FastAPI development server
-uv run uvicorn app.main:app --host 0.0.0.0 --port 5123 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 4123 --reload
 
 # Run with specific Python version
 uv run --python 3.11 uvicorn app.main:app --reload
@@ -281,10 +281,10 @@ Update your CI/CD pipelines to use uv with FastAPI:
 
 - name: Test FastAPI endpoints
   run: |
-    uv run uvicorn api:app --host 0.0.0.0 --port 5123 &
+    uv run uvicorn api:app --host 0.0.0.0 --port 4123 &
     sleep 10
-    curl -f http://localhost:5123/health
-    curl -f http://localhost:5123/docs
+    curl -f http://localhost:4123/health
+    curl -f http://localhost:4123/docs
 ```
 
 ## Troubleshooting
@@ -391,4 +391,4 @@ If you encounter issues during migration:
 4. Include `uv.lock` and `pyproject.toml` files
 5. Provide error logs with `--verbose` flag
 
-For FastAPI-specific issues, visit the interactive documentation at `http://localhost:5123/docs` once the server is running.
+For FastAPI-specific issues, visit the interactive documentation at `http://localhost:4123/docs` once the server is running.

@@ -27,6 +27,7 @@
 🎭 **Voice Cloning** - Use your own voice samples for personalized speech  
 🎤 **Voice Upload** - Upload custom voice files per request or use configured default  
 📝 **Smart Text Processing** - Automatic chunking for long texts  
+📊 **Real-time Status** - Monitor TTS progress, statistics, and request history  
 🐳 **Docker Ready** - Full containerization support  
 ⚙️ **Configurable** - Extensive environment variable configuration  
 🎛️ **Parameter Control** - Real-time adjustment of speech characteristics  
@@ -387,14 +388,19 @@ docker compose -f docker/docker-compose.gpu.yml up -d
 
 ## API Endpoints
 
-| Endpoint           | Method | Description                      |
-| ------------------ | ------ | -------------------------------- |
-| `/v1/audio/speech` | POST   | Generate speech from text        |
-| `/health`          | GET    | Health check and status          |
-| `/config`          | GET    | Current configuration            |
-| `/v1/models`       | GET    | Available models (OpenAI compat) |
-| `/docs`            | GET    | Interactive API documentation    |
-| `/redoc`           | GET    | Alternative API documentation    |
+| Endpoint             | Method | Description                      |
+| -------------------- | ------ | -------------------------------- |
+| `/audio/speech`      | POST   | Generate speech from text        |
+| `/health`            | GET    | Health check and status          |
+| `/config`            | GET    | Current configuration            |
+| `/v1/models`         | GET    | Available models (OpenAI compat) |
+| `/status`            | GET    | TTS processing status & progress |
+| `/status/progress`   | GET    | Real-time progress (lightweight) |
+| `/status/statistics` | GET    | Processing statistics            |
+| `/status/history`    | GET    | Recent request history           |
+| `/info`              | GET    | Complete API information         |
+| `/docs`              | GET    | Interactive API documentation    |
+| `/redoc`             | GET    | Alternative API documentation    |
 
 ## Parameters Reference
 
@@ -453,6 +459,44 @@ curl "http://localhost:4123/memory?cleanup=true&force_cuda_clear=true"
 # Reset memory tracking (with confirmation)
 curl -X POST "http://localhost:4123/memory/reset?confirm=true"
 ```
+
+### Real-time Status Tracking
+
+Monitor TTS processing in real-time:
+
+```bash
+# Check current processing status
+curl "http://localhost:4123/v1/status/progress"
+
+# Get detailed status with memory and stats
+curl "http://localhost:4123/v1/status?include_memory=true&include_stats=true"
+
+# View processing statistics
+curl "http://localhost:4123/v1/status/statistics"
+
+# Check request history
+curl "http://localhost:4123/v1/status/history?limit=5"
+
+# Get comprehensive API information
+curl "http://localhost:4123/info"
+```
+
+**Status Response Example:**
+
+```json
+{
+  "is_processing": true,
+  "status": "generating_audio",
+  "current_step": "Generating audio for chunk 2/4",
+  "current_chunk": 2,
+  "total_chunks": 4,
+  "progress_percentage": 50.0,
+  "duration_seconds": 2.5,
+  "text_preview": "Your text being processed..."
+}
+```
+
+See [Status API Documentation](docs/STATUS_API.md) for complete details.
 
 ### Memory Testing
 

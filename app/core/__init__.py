@@ -5,6 +5,7 @@ Core functionality for Chatterbox TTS API
 from .memory import get_memory_info, cleanup_memory, safe_delete_tensors
 from .text_processing import split_text_into_chunks, concatenate_audio_chunks
 from .tts_model import initialize_model, get_model
+from .version import get_version, get_version_info
 from .aliases import (
     alias_route, 
     add_route_aliases, 
@@ -15,6 +16,15 @@ from .aliases import (
     get_endpoint_info,
     ENDPOINT_ALIASES
 )
+from .status import (
+    TTSStatus,
+    start_tts_request,
+    update_tts_status,
+    get_tts_status,
+    get_tts_history,
+    get_tts_statistics,
+    clear_tts_history
+)
 
 __all__ = [
     "get_memory_info",
@@ -24,6 +34,8 @@ __all__ = [
     "concatenate_audio_chunks",
     "initialize_model",
     "get_model",
+    "get_version",
+    "get_version_info",
     "alias_route",
     "add_route_aliases",
     "get_all_aliases",
@@ -31,5 +43,12 @@ __all__ = [
     "add_multiple_aliases",
     "remove_alias",
     "get_endpoint_info",
-    "ENDPOINT_ALIASES"
+    "ENDPOINT_ALIASES",
+    "TTSStatus",
+    "start_tts_request",
+    "update_tts_status",
+    "get_tts_status",
+    "get_tts_history",
+    "get_tts_statistics",
+    "clear_tts_history"
 ] 
