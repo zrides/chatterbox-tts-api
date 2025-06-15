@@ -11,6 +11,8 @@ from functools import wraps
 ENDPOINT_ALIASES: Dict[str, List[str]] = {
     "/audio/speech": ["/v1/audio/speech", "/tts"],
     "/audio/speech/upload": ["/v1/audio/speech/upload", "/tts/upload"],
+    "/audio/speech/stream": ["/v1/audio/speech/stream", "/tts/stream"],
+    "/audio/speech/stream/upload": ["/v1/audio/speech/stream/upload", "/tts/stream/upload"],
     "/health": ["/v1/health", "/status"],
     "/models": ["/v1/models"],
     "/config": ["/v1/config"],

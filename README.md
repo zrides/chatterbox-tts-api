@@ -180,7 +180,7 @@ The frontend uses a reverse proxy to route requests, so when running with `--pro
 
 </details>
 
-## Screenshots of Frontend (Web UI) 
+## Screenshots of Frontend (Web UI)
 
 <div align="center">
   <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUS62gM9PGyDAvTxnjVKQO0Zz5uI6Jg4UodHEa" alt="Chatterbox TTS API - Frontend - Dark Mode" width="33%" />
@@ -240,6 +240,44 @@ curl -X POST http://localhost:4123/v1/audio/speech/upload \
   --output dramatic.wav
 ```
 
+## 🎵 Real-time Audio Streaming
+
+The API supports real-time audio streaming for lower latency and better user experience. Audio chunks are generated and sent as they're ready, allowing you to start playing audio before complete generation.
+
+### Quick Start
+
+```bash
+# Basic streaming
+curl -X POST http://localhost:4123/v1/audio/speech/stream \
+  -H "Content-Type: application/json" \
+  -d '{"input": "This streams in real-time!"}' \
+  --output streaming.wav
+
+# Real-time playback
+curl -X POST http://localhost:4123/v1/audio/speech/stream \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Play as it generates!"}' \
+  | ffplay -f wav -i pipe:0 -autoexit -nodisp
+```
+
+### 🚀 **[Complete Streaming Documentation →](docs/STREAMING_API.md)**
+
+For comprehensive streaming features including:
+
+- **Advanced chunking strategies** (sentence, paragraph, word, fixed)
+- **Quality presets** (fast, balanced, high)
+- **Configurable parameters** and performance tuning
+- **Real-time progress monitoring**
+- **Python, JavaScript, and cURL examples**
+- **Integration patterns** for different use cases
+
+**Key Benefits:**
+
+- ⚡ **Lower latency** - Start hearing audio in 1-2 seconds
+- 🎯 **Better UX** - No waiting for complete generation
+- 💾 **Memory efficient** - Process chunks individually
+- 🎛️ **Configurable** - Choose speed vs quality trade-offs
+
 <details>
 <summary><strong>🐍 Python Examples</strong></summary>
 
@@ -298,6 +336,32 @@ with open("my_voice.mp3", "rb") as voice_file:
 with open("custom_output.wav", "wb") as f:
     f.write(response.content)
 ```
+
+### Basic Streaming Example
+
+```python
+import requests
+
+# Stream audio generation in real-time
+response = requests.post(
+    "http://localhost:4123/v1/audio/speech/stream",
+    json={
+        "input": "This will stream as it's generated!",
+        "exaggeration": 0.8
+    },
+    stream=True  # Enable streaming mode
+)
+
+with open("streaming_output.wav", "wb") as f:
+    for chunk in response.iter_content(chunk_size=8192):
+        if chunk:
+            f.write(chunk)
+            print(f"Received chunk: {len(chunk)} bytes")
+```
+
+**📚 [Complete Streaming Examples & Documentation →](docs/STREAMING_API.md)**
+
+Including real-time playback, progress monitoring, custom voice uploads, and advanced integration patterns.
 
 </details>
 
@@ -402,19 +466,22 @@ docker compose -f docker/docker-compose.gpu.yml up -d
 
 ## API Endpoints
 
-| Endpoint             | Method | Description                      |
-| -------------------- | ------ | -------------------------------- |
-| `/audio/speech`      | POST   | Generate speech from text        |
-| `/health`            | GET    | Health check and status          |
-| `/config`            | GET    | Current configuration            |
-| `/v1/models`         | GET    | Available models (OpenAI compat) |
-| `/status`            | GET    | TTS processing status & progress |
-| `/status/progress`   | GET    | Real-time progress (lightweight) |
-| `/status/statistics` | GET    | Processing statistics            |
-| `/status/history`    | GET    | Recent request history           |
-| `/info`              | GET    | Complete API information         |
-| `/docs`              | GET    | Interactive API documentation    |
-| `/redoc`             | GET    | Alternative API documentation    |
+| Endpoint                      | Method | Description                                                         |
+| ----------------------------- | ------ | ------------------------------------------------------------------- |
+| `/audio/speech`               | POST   | Generate speech from text (complete)                                |
+| `/audio/speech/upload`        | POST   | Generate speech with voice upload                                   |
+| `/audio/speech/stream`        | POST   | **Stream** speech generation ([docs](docs/STREAMING_API.md))        |
+| `/audio/speech/stream/upload` | POST   | **Stream** speech with voice upload ([docs](docs/STREAMING_API.md)) |
+| `/health`                     | GET    | Health check and status                                             |
+| `/config`                     | GET    | Current configuration                                               |
+| `/v1/models`                  | GET    | Available models (OpenAI compat)                                    |
+| `/status`                     | GET    | TTS processing status & progress                                    |
+| `/status/progress`            | GET    | Real-time progress (lightweight)                                    |
+| `/status/statistics`          | GET    | Processing statistics                                               |
+| `/status/history`             | GET    | Recent request history                                              |
+| `/info`                       | GET    | Complete API information                                            |
+| `/docs`                       | GET    | Interactive API documentation                                       |
+| `/redoc`                      | GET    | Alternative API documentation                                       |
 
 ## Parameters Reference
 
@@ -826,4 +893,3 @@ curl http://localhost:4123/openapi.json
 - 📖 **Documentation**: See [API Documentation](docs/API_README.md) and [Docker Guide](docs/DOCKER_README.md)
 - 🐛 **Issues**: Report bugs and feature requests via GitHub issues
 - 💬 **Discord**: [Join the Discord for this project](http://chatterboxtts.com/discord)
-
