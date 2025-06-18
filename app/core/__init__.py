@@ -11,6 +11,7 @@ from .text_processing import (
 )
 from .tts_model import initialize_model, get_model
 from .version import get_version, get_version_info
+from .voice_library import get_voice_library, VoiceLibrary, SUPPORTED_VOICE_FORMATS
 from .aliases import (
     alias_route, 
     add_route_aliases, 
@@ -43,6 +44,9 @@ __all__ = [
     "get_model",
     "get_version",
     "get_version_info",
+    "get_voice_library",
+    "VoiceLibrary", 
+    "SUPPORTED_VOICE_FORMATS",
     "alias_route",
     "add_route_aliases",
     "get_all_aliases",

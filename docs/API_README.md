@@ -97,7 +97,7 @@ Generate speech from text using the Chatterbox TTS model.
 ```json
 {
   "input": "Text to convert to speech",
-  "voice": "alloy", // Ignored - uses voice-sample.mp3
+  "voice": "alloy", // OpenAI voice name or custom voice library name
   "response_format": "wav", // Ignored - always returns WAV
   "speed": 1.0, // Ignored - use model's built-in parameters
   "exaggeration": 0.7, // Optional - override default (0.25-2.0)
@@ -135,6 +135,17 @@ curl -X POST http://localhost:4123/v1/audio/speech \
   -d '{"input": "Dramatic speech!", "exaggeration": 1.2, "cfg_weight": 0.3}' \
   --output dramatic.wav
 ```
+
+**Using a voice from the voice library:**
+
+```bash
+curl -X POST http://localhost:4123/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Hello with custom voice!", "voice": "my-uploaded-voice"}' \
+  --output custom_voice.wav
+```
+
+> **Note:** See [Voice Library Management Documentation](VOICE_LIBRARY_MANAGEMENT.md) for complete voice management API details.
 
 ### 2. Health Check
 
@@ -306,6 +317,7 @@ MAX_TOTAL_LENGTH=3000     # Total character limit
 
 # Voice and Model Settings
 VOICE_SAMPLE_PATH=./voice-sample.mp3
+VOICE_LIBRARY_DIR=./voices
 DEVICE=auto               # auto/cuda/mps/cpu
 MODEL_CACHE_DIR=./models
 ```

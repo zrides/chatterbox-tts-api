@@ -27,6 +27,7 @@ services:
       - VOICE_SAMPLE_PATH=/app/voice-sample.mp3
       - DEVICE=cpu # Force CPU for this variant
       - MODEL_CACHE_DIR=/cache
+      - VOICE_LIBRARY_DIR=/voices
 
       # Memory Settings
       - MEMORY_CLEANUP_INTERVAL=${MEMORY_CLEANUP_INTERVAL:-5}
@@ -40,7 +41,10 @@ services:
       # Mount model cache for persistence
       - chatterbox-models:/cache
 
-      # Optional: Mount custom voice samples directory
+      # Mount voice library for persistence
+      - chatterbox-voices:/voices
+
+      # Optional: Mount custom voice samples directory (legacy)
       - ${VOICE_SAMPLES_DIR:-../voice-samples}:/app/voice-samples:ro
 
     restart: unless-stopped
@@ -67,4 +71,6 @@ services:
 
 volumes:
   chatterbox-models:
+    driver: local
+  chatterbox-voices:
     driver: local

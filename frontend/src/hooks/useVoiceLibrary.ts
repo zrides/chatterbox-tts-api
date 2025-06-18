@@ -1,148 +1,60 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createTTSService } from '../services/tts';
+import { useApiEndpoint } from './useApiEndpoint';
 import type { VoiceSample } from '../types';
 
-const STORAGE_KEY = 'chatterbox-voice-library';
-const DB_NAME = 'chatterbox-voices';
-const DB_VERSION = 1;
-const STORE_NAME = 'voice-files';
-
-// IndexedDB utilities for storing audio files
-const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => {
-      console.error('Failed to open IndexedDB:', request.error);
-      reject(request.error);
-    };
-
-    request.onsuccess = () => resolve(request.result);
-
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      try {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        }
-      } catch (error) {
-        console.error('Failed to create object store:', error);
-        reject(error);
-      }
-    };
-
-    request.onblocked = () => {
-      console.warn('IndexedDB connection blocked');
-      reject(new Error('Database connection blocked'));
-    };
-  });
+// Convert backend voice data to frontend VoiceSample format
+const convertToVoiceSample = (backendVoice: any): VoiceSample => {
+  return {
+    id: backendVoice.name, // Use name as ID for backend voices
+    name: backendVoice.name,
+    file: null as any, // We don't have the original File object for backend voices
+    audioUrl: '', // We'll generate this on demand via download endpoint
+    uploadDate: new Date(backendVoice.upload_date)
+  };
 };
-
-const storeVoiceFile = async (id: string, file: File): Promise<void> => {
-  // Convert file to array buffer first, outside of the transaction
-  const arrayBuffer = await file.arrayBuffer();
-
-  const db = await openDB();
-  const transaction = db.transaction([STORE_NAME], 'readwrite');
-  const store = transaction.objectStore(STORE_NAME);
-
-  await new Promise<void>((resolve, reject) => {
-    const request = store.put({
-      id,
-      data: arrayBuffer,
-      type: file.type,
-      name: file.name,
-      size: file.size
-    });
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-
-    // Also handle transaction errors
-    transaction.onerror = () => reject(transaction.error);
-    transaction.onabort = () => reject(new Error('Transaction aborted'));
-  });
-};
-
-const getVoiceFile = async (id: string): Promise<File | null> => {
-  try {
-    const db = await openDB();
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-
-    return new Promise((resolve, reject) => {
-      const request = store.get(id);
-      request.onsuccess = () => {
-        const result = request.result;
-        if (result) {
-          const file = new File([result.data], result.name, { type: result.type });
-          resolve(file);
-        } else {
-          resolve(null);
-        }
-      };
-      request.onerror = () => reject(request.error);
-    });
-  } catch (error) {
-    console.error('Error retrieving voice file:', error);
-    return null;
-  }
-};
-
-const deleteVoiceFile = async (id: string): Promise<void> => {
-  try {
-    const db = await openDB();
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-
-    await new Promise<void>((resolve, reject) => {
-      const request = store.delete(id);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  } catch (error) {
-    console.error('Error deleting voice file:', error);
-  }
-};
-
-interface StoredVoiceMetadata {
-  id: string;
-  name: string;
-  uploadDate: string;
-  fileSize: number;
-  fileType: string;
-}
 
 export function useVoiceLibrary() {
   const [voices, setVoices] = useState<VoiceSample[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<VoiceSample | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { apiBaseUrl } = useApiEndpoint();
 
-  // Load voices from storage on mount
+  const ttsService = createTTSService(apiBaseUrl);
+
+  // Load voices from backend on mount
   useEffect(() => {
     const loadVoices = async () => {
       try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const metadata: StoredVoiceMetadata[] = JSON.parse(stored);
+        setIsLoading(true);
+        const response = await ttsService.getVoices();
 
-          const loadedVoices: VoiceSample[] = [];
-          for (const meta of metadata) {
-            const file = await getVoiceFile(meta.id);
-            if (file) {
-              const audioUrl = URL.createObjectURL(file);
-              loadedVoices.push({
-                id: meta.id,
-                name: meta.name,
-                file,
-                audioUrl,
-                uploadDate: new Date(meta.uploadDate)
-              });
-            }
+        const loadedVoices: VoiceSample[] = [];
+        for (const backendVoice of response.voices) {
+          const voiceSample = convertToVoiceSample(backendVoice);
+
+          // Generate audio URL for preview (download endpoint)
+          try {
+            const audioBlob = await ttsService.downloadVoice(backendVoice.name);
+            voiceSample.audioUrl = URL.createObjectURL(audioBlob);
+
+            // Create a File object from the blob for compatibility
+            voiceSample.file = new File([audioBlob], backendVoice.filename, {
+              type: getAudioMimeType(backendVoice.file_extension)
+            });
+          } catch (error) {
+            console.error(`Failed to load audio for voice ${backendVoice.name}:`, error);
+            // Skip this voice if we can't load its audio
+            continue;
           }
 
-          setVoices(loadedVoices);
+          loadedVoices.push(voiceSample);
         }
+
+        setVoices(loadedVoices);
       } catch (error) {
         console.error('Error loading voice library:', error);
+        setVoices([]); // Fallback to empty array on error
       } finally {
         setIsLoading(false);
       }
@@ -152,59 +64,50 @@ export function useVoiceLibrary() {
 
     // Cleanup URLs on unmount
     return () => {
-      voices.forEach(voice => URL.revokeObjectURL(voice.audioUrl));
+      voices.forEach(voice => {
+        if (voice.audioUrl) {
+          URL.revokeObjectURL(voice.audioUrl);
+        }
+      });
     };
-  }, []);
+  }, [apiBaseUrl]);
 
-  // Save metadata to localStorage whenever voices change
-  useEffect(() => {
-    if (!isLoading) {
-      const metadata: StoredVoiceMetadata[] = voices.map(voice => ({
-        id: voice.id,
-        name: voice.name,
-        uploadDate: voice.uploadDate.toISOString(),
-        fileSize: voice.file.size,
-        fileType: voice.file.type
-      }));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(metadata));
-    }
-  }, [voices, isLoading]);
-
-  const addVoice = useCallback(async (file: File, customName?: string) => {
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    const name = customName || file.name.replace(/\.[^/.]+$/, "");
+  const addVoice = useCallback(async (file: File, customName?: string): Promise<VoiceSample> => {
+    const voiceName = customName || file.name.replace(/\.[^/.]+$/, "");
 
     try {
-      // Store file in IndexedDB
-      await storeVoiceFile(id, file);
+      // Upload to backend
+      await ttsService.uploadVoice(voiceName, file);
 
-      // Create URL for immediate use
+      // Create new voice sample
       const audioUrl = URL.createObjectURL(file);
-
       const voice: VoiceSample = {
-        id,
-        name,
+        id: voiceName,
+        name: voiceName,
         file,
         audioUrl,
         uploadDate: new Date()
       };
 
-      setVoices(prev => [...prev, voice]);
+      // Add to local state
+      setVoices(prev => [voice, ...prev]);
       return voice;
     } catch (error) {
       console.error('Error adding voice:', error);
       throw error;
     }
-  }, []);
+  }, [ttsService]);
 
   const deleteVoice = useCallback(async (voiceId: string) => {
-    const voice = voices.find(v => v.id === voiceId);
-    if (voice) {
-      // Revoke URL
-      URL.revokeObjectURL(voice.audioUrl);
+    try {
+      // Delete from backend
+      await ttsService.deleteVoice(voiceId);
 
-      // Remove from IndexedDB
-      await deleteVoiceFile(voiceId);
+      const voice = voices.find(v => v.id === voiceId);
+      if (voice && voice.audioUrl) {
+        // Revoke URL
+        URL.revokeObjectURL(voice.audioUrl);
+      }
 
       // Clear selection if this voice was selected
       if (selectedVoice?.id === voiceId) {
@@ -213,14 +116,72 @@ export function useVoiceLibrary() {
 
       // Remove from state
       setVoices(prev => prev.filter(v => v.id !== voiceId));
+    } catch (error) {
+      console.error('Error deleting voice:', error);
+      throw error;
     }
-  }, [voices, selectedVoice]);
+  }, [voices, selectedVoice, ttsService]);
 
-  const renameVoice = useCallback((voiceId: string, newName: string) => {
-    setVoices(prev => prev.map(voice =>
-      voice.id === voiceId ? { ...voice, name: newName } : voice
-    ));
-  }, []);
+  const renameVoice = useCallback(async (voiceId: string, newName: string) => {
+    try {
+      // Rename in backend
+      await ttsService.renameVoice(voiceId, newName);
+
+      // Update local state
+      setVoices(prev => prev.map(voice => {
+        if (voice.id === voiceId) {
+          return { ...voice, id: newName, name: newName };
+        }
+        return voice;
+      }));
+
+      // Update selected voice if it was the renamed one
+      if (selectedVoice?.id === voiceId) {
+        setSelectedVoice(prev => prev ? { ...prev, id: newName, name: newName } : null);
+      }
+    } catch (error) {
+      console.error('Error renaming voice:', error);
+      throw error;
+    }
+  }, [selectedVoice, ttsService]);
+
+  const refreshVoices = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await ttsService.getVoices();
+      const loadedVoices: VoiceSample[] = [];
+
+      // Clean up existing URLs
+      voices.forEach(voice => {
+        if (voice.audioUrl) {
+          URL.revokeObjectURL(voice.audioUrl);
+        }
+      });
+
+      for (const backendVoice of response.voices) {
+        const voiceSample = convertToVoiceSample(backendVoice);
+
+        try {
+          const audioBlob = await ttsService.downloadVoice(backendVoice.name);
+          voiceSample.audioUrl = URL.createObjectURL(audioBlob);
+          voiceSample.file = new File([audioBlob], backendVoice.filename, {
+            type: getAudioMimeType(backendVoice.file_extension)
+          });
+        } catch (error) {
+          console.error(`Failed to load audio for voice ${backendVoice.name}:`, error);
+          continue;
+        }
+
+        loadedVoices.push(voiceSample);
+      }
+
+      setVoices(loadedVoices);
+    } catch (error) {
+      console.error('Error refreshing voices:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [ttsService, voices]);
 
   return {
     voices,
@@ -229,6 +190,19 @@ export function useVoiceLibrary() {
     addVoice,
     deleteVoice,
     renameVoice,
+    refreshVoices,
     isLoading
   };
+}
+
+// Helper function to get MIME type from file extension
+function getAudioMimeType(extension: string): string {
+  const mimeTypes: Record<string, string> = {
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.flac': 'audio/flac',
+    '.m4a': 'audio/mp4',
+    '.ogg': 'audio/ogg'
+  };
+  return mimeTypes[extension] || 'audio/mpeg';
 } 

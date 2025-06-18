@@ -7,7 +7,15 @@ from fastapi import APIRouter
 from app.models import HealthResponse
 from app.config import Config
 from app.core import get_memory_info, add_route_aliases
-from app.core.tts_model import get_model, get_device
+from app.core.tts_model import (
+    get_model, 
+    get_device, 
+    get_initialization_state,
+    get_initialization_progress,
+    get_initialization_error,
+    is_ready,
+    is_initializing
+)
 
 # Create router with aliasing support
 base_router = APIRouter()
@@ -21,12 +29,25 @@ router = add_route_aliases(base_router)
     description="Check API health and model status"
 )
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint - always responds even during initialization"""
     model = get_model()
     device = get_device()
+    init_state = get_initialization_state()
+    init_progress = get_initialization_progress()
+    init_error = get_initialization_error()
+    
+    # Determine status based on initialization state
+    if init_state == "ready":
+        status = "healthy"
+    elif init_state == "initializing":
+        status = "initializing"
+    elif init_state == "error":
+        status = "error"
+    else:
+        status = "starting"
     
     return HealthResponse(
-        status="healthy" if model is not None else "unhealthy",
+        status=status,
         model_loaded=model is not None,
         device=device or "unknown",
         config={
@@ -37,8 +58,21 @@ async def health_check():
             "default_cfg_weight": Config.CFG_WEIGHT,
             "default_temperature": Config.TEMPERATURE
         },
-        memory_info=get_memory_info()
+        memory_info=get_memory_info(),
+        initialization_state=init_state,
+        initialization_progress=init_progress,
+        initialization_error=init_error
     )
+
+
+@router.get(
+    "/ping",
+    summary="Simple connectivity check",
+    description="Basic connectivity test - always responds immediately"
+)
+async def ping():
+    """Simple ping endpoint for connectivity testing"""
+    return {"status": "ok", "message": "Server is running"}
 
 # Export the base router for the main app to use
 __all__ = ["base_router"] 

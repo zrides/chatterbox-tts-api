@@ -1,13 +1,45 @@
-import React from 'react';
-import { Loader2, Clock, Cpu, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Loader2, Clock, Cpu, Zap, Minimize2, Maximize2, X } from 'lucide-react';
 import type { TTSProgress } from '../types';
 
 interface StatusProgressOverlayProps {
   progress: TTSProgress | undefined;
   isVisible: boolean;
+  onDismiss?: () => void;
 }
 
-export default function StatusProgressOverlay({ progress, isVisible }: StatusProgressOverlayProps) {
+export default function StatusProgressOverlay({
+  progress,
+  isVisible,
+  onDismiss
+}: StatusProgressOverlayProps) {
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  // Load minimized state from localStorage
+  useEffect(() => {
+    const savedMinimized = localStorage.getItem('tts-progress-minimized');
+    if (savedMinimized === 'true') {
+      setIsMinimized(true);
+    }
+  }, []);
+
+  // Save minimized state to localStorage
+  const handleMinimize = () => {
+    setIsMinimized(true);
+    localStorage.setItem('tts-progress-minimized', 'true');
+  };
+
+  const handleMaximize = () => {
+    setIsMinimized(false);
+    localStorage.setItem('tts-progress-minimized', 'false');
+  };
+
+  const handleDismiss = () => {
+    if (onDismiss) {
+      onDismiss();
+    }
+  };
+
   if (!isVisible || !progress?.is_processing) {
     return null;
   }
@@ -56,19 +88,70 @@ export default function StatusProgressOverlay({ progress, isVisible }: StatusPro
     }
   };
 
+  // Minimized floating indicator
+  if (isMinimized) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50">
+        <button
+          onClick={handleMaximize}
+          className="bg-card border border-border rounded-lg p-3 shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-105 group"
+        >
+          <div className="flex items-center gap-3">
+            <div className={getStatusColor(progress.status)}>
+              {getStatusIcon(progress.status)}
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-medium text-foreground">
+                Generating Speech
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {progressPercentage.toFixed(0)}% • Click to expand
+              </div>
+            </div>
+            <div className="w-12 h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300"
+                style={{ width: `${Math.min(100, Math.max(0, progressPercentage))}%` }}
+              />
+            </div>
+          </div>
+        </button>
+      </div>
+    );
+  }
+
+  // Full modal
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
-        {/* Header */}
+        {/* Header with controls */}
         <div className="flex items-center gap-3 mb-4">
           <div className={getStatusColor(progress.status)}>
             {getStatusIcon(progress.status)}
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="font-semibold text-foreground">Generating Speech</h3>
             <p className="text-sm text-muted-foreground capitalize">
               {progress.status.replace('_', ' ')}
             </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleMinimize}
+              className="p-1 hover:bg-accent rounded transition-colors duration-200"
+              title="Minimize to corner"
+            >
+              <Minimize2 className="w-4 h-4 text-muted-foreground" />
+            </button>
+            {onDismiss && (
+              <button
+                onClick={handleDismiss}
+                className="p-1 hover:bg-destructive/10 text-destructive rounded transition-colors duration-200"
+                title="Hide until next request"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 

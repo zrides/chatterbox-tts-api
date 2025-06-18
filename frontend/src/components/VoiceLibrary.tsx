@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Trash2, Play, Pause, Upload, Edit2, Check, X } from 'lucide-react';
+import { Trash2, Play, Pause, Upload, Edit2, Check, X, RefreshCw, Crown, Star, StarOff } from 'lucide-react';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -12,8 +12,12 @@ interface VoiceLibraryProps {
   onVoiceSelect: (voice: VoiceSample | null) => void;
   onAddVoice: (file: File, customName?: string) => Promise<VoiceSample>;
   onDeleteVoice: (voiceId: string) => Promise<void>;
-  onRenameVoice: (voiceId: string, newName: string) => void;
+  onRenameVoice: (voiceId: string, newName: string) => Promise<void>;
+  onRefresh?: () => Promise<void>;
   isLoading: boolean;
+  defaultVoice?: string | null;
+  onSetDefaultVoice?: (voiceName: string) => Promise<boolean>;
+  onClearDefaultVoice?: () => Promise<boolean>;
 }
 
 export default function VoiceLibrary({
@@ -23,7 +27,11 @@ export default function VoiceLibrary({
   onAddVoice,
   onDeleteVoice,
   onRenameVoice,
-  isLoading
+  onRefresh,
+  isLoading,
+  defaultVoice,
+  onSetDefaultVoice,
+  onClearDefaultVoice
 }: VoiceLibraryProps) {
 
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
@@ -55,11 +63,15 @@ export default function VoiceLibrary({
     setEditName(currentName);
   };
 
-  const handleSaveRename = () => {
+  const handleSaveRename = async () => {
     if (editingVoice && editName.trim()) {
-      onRenameVoice(editingVoice, editName.trim());
-      setEditingVoice(null);
-      setEditName('');
+      try {
+        await onRenameVoice(editingVoice, editName.trim());
+        setEditingVoice(null);
+        setEditName('');
+      } catch (error) {
+        alert('Failed to rename voice. Please try again.');
+      }
     }
   };
 
@@ -74,6 +86,32 @@ export default function VoiceLibrary({
         await onDeleteVoice(voiceId);
       } catch (error) {
         alert('Failed to delete voice. Please try again.');
+      }
+    }
+  };
+
+  const handleSetAsDefault = async (voiceName: string) => {
+    if (onSetDefaultVoice) {
+      try {
+        const success = await onSetDefaultVoice(voiceName);
+        if (!success) {
+          alert('Failed to set default voice. Please try again.');
+        }
+      } catch (error) {
+        alert('Failed to set default voice. Please try again.');
+      }
+    }
+  };
+
+  const handleClearDefault = async () => {
+    if (onClearDefaultVoice) {
+      try {
+        const success = await onClearDefaultVoice();
+        if (!success) {
+          alert('Failed to clear default voice. Please try again.');
+        }
+      } catch (error) {
+        alert('Failed to clear default voice. Please try again.');
       }
     }
   };
@@ -130,14 +168,39 @@ export default function VoiceLibrary({
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Voice Library</CardTitle>
-            <Button
-              onClick={() => setShowUploadModal(true)}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-semibold duration-300"
-            >
-              <Upload className="w-4 h-4" />
-              Add Voice
-            </Button>
+            <div className="flex items-center gap-2">
+              <CardTitle>Voice Library</CardTitle>
+              {defaultVoice && onClearDefaultVoice && (
+                <button
+                  onClick={handleClearDefault}
+                  className="text-xs text-muted-foreground hover:text-foreground duration-300 flex items-center gap-1"
+                  title="Clear default voice"
+                >
+                  <StarOff className="w-3 h-3" />
+                  Clear Default
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {onRefresh && (
+                <Button
+                  onClick={onRefresh}
+                  variant="outline"
+                  size="sm"
+                  className="px-3 py-2"
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              )}
+              <Button
+                onClick={() => setShowUploadModal(true)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg text-sm flex items-center gap-2 font-semibold duration-300"
+              >
+                <Upload className="w-4 h-4" />
+                Add Voice
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -200,7 +263,14 @@ export default function VoiceLibrary({
                         </div>
                       ) : (
                         <>
-                          <p className="font-medium text-foreground truncate">{voice.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground truncate">{voice.name}</p>
+                            {defaultVoice === voice.name && (
+                              <div className="flex-shrink-0" title="Default Voice">
+                                <Crown className="w-4 h-4 text-yellow-500" />
+                              </div>
+                            )}
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {voice.uploadDate.toLocaleDateString()} • {(voice.file.size / 1024 / 1024).toFixed(1)}MB
                           </p>
@@ -208,6 +278,19 @@ export default function VoiceLibrary({
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Default Voice Button - only show if we have the handler */}
+                      {onSetDefaultVoice && defaultVoice !== voice.name && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetAsDefault(voice.name);
+                          }}
+                          className="p-1 hover:bg-yellow-100 dark:hover:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded transition-colors duration-300"
+                          title="Set as default voice"
+                        >
+                          <Star className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();

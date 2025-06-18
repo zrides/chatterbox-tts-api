@@ -27,6 +27,7 @@ services:
       - VOICE_SAMPLE_PATH=/app/voice-sample.mp3
       - DEVICE=${DEVICE:-cuda}
       - MODEL_CACHE_DIR=/cache
+      - VOICE_LIBRARY_DIR=/voices
 
       # NVIDIA/CUDA settings
       - NVIDIA_VISIBLE_DEVICES=all
@@ -38,7 +39,10 @@ services:
       # Mount model cache for persistence
       - chatterbox-models:/cache
 
-      # Optional: Mount custom voice samples directory
+      # Mount voice library for persistence
+      - chatterbox-voices:/voices
+
+      # Optional: Mount custom voice samples directory (legacy)
       - ${VOICE_SAMPLES_DIR:-../voice-samples}:/app/voice-samples:ro
 
     # GPU support (Docker Compose v2 format)
@@ -77,4 +81,6 @@ services:
 
 volumes:
   chatterbox-models:
+    driver: local
+  chatterbox-voices:
     driver: local

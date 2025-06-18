@@ -241,8 +241,11 @@ uv run uvicorn app.main:app --host 0.0.0.0 --port 4123 --reload
 # Run with specific Python version
 uv run --python 3.11 uvicorn app.main:app --reload
 
-# Install development dependencies
-uv sync --extra dev
+# Install development dependencies (basic tools)
+uv sync
+
+# Install test dependencies (for testing/contributing)
+uv sync --group test
 ```
 
 ### Environment management:
@@ -260,8 +263,11 @@ uv remove numpy
 # Update all dependencies
 uv sync --upgrade
 
-# Install dev dependencies
-uv sync --extra dev
+# Install dev dependencies (basic development tools)
+uv sync
+
+# Install test dependencies (for contributors/testing)
+uv sync --group test
 ```
 
 ## Step 7: CI/CD Updates

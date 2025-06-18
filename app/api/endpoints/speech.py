@@ -17,7 +17,7 @@ from app.config import Config
 from app.core import (
     get_memory_info, cleanup_memory, safe_delete_tensors,
     split_text_into_chunks, concatenate_audio_chunks, add_route_aliases,
-    TTSStatus, start_tts_request, update_tts_status
+    TTSStatus, start_tts_request, update_tts_status, get_voice_library
 )
 from app.core.tts_model import get_model
 from app.core.text_processing import split_text_for_streaming, get_streaming_settings
@@ -33,6 +33,41 @@ REQUEST_COUNTER = 0
 SUPPORTED_AUDIO_FORMATS = {'.mp3', '.wav', '.flac', '.m4a', '.ogg'}
 
 
+def resolve_voice_path(voice_name: Optional[str]) -> str:
+    """
+    Resolve a voice name to a file path.
+    
+    Args:
+        voice_name: Voice name from the request (can be None for default)
+        
+    Returns:
+        Path to the voice file
+        
+    Raises:
+        HTTPException: If voice name is provided but not found
+    """
+    # If no voice specified or voice is a default OpenAI voice name, use default
+    openai_voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
+    
+    if not voice_name or voice_name.lower() in openai_voices:
+        return Config.VOICE_SAMPLE_PATH
+    
+    # Try to resolve from voice library
+    voice_lib = get_voice_library()
+    voice_path = voice_lib.get_voice_path(voice_name)
+    
+    if voice_path is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "message": f"Voice '{voice_name}' not found in voice library. Use /voices endpoint to list available voices.",
+                    "type": "voice_not_found_error"
+                }
+            }
+        )
+    
+    return voice_path
 
 
 def validate_audio_file(file: UploadFile) -> None:
@@ -488,18 +523,22 @@ async def generate_speech_streaming(
     responses={
         200: {"content": {"audio/wav": {}}},
         400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
         500: {"model": ErrorResponse}
     },
     summary="Generate speech from text",
-    description="Generate speech audio from input text using configured voice sample (JSON only). For custom voice upload, use /audio/speech/upload endpoint."
+    description="Generate speech audio from input text. Supports voice names from the voice library or defaults to configured voice sample."
 )
 async def text_to_speech(request: TTSRequest):
-    """Generate speech from text using Chatterbox TTS with configured voice sample (JSON)"""
+    """Generate speech from text using Chatterbox TTS with voice selection support"""
+    
+    # Resolve voice name to file path
+    voice_sample_path = resolve_voice_path(request.voice)
     
     # Generate speech using internal function
     buffer = await generate_speech_internal(
         text=request.input,
-        voice_sample_path=Config.VOICE_SAMPLE_PATH,
+        voice_sample_path=voice_sample_path,
         exaggeration=request.exaggeration,
         cfg_weight=request.cfg_weight,
         temperature=request.temperature
@@ -523,12 +562,12 @@ async def text_to_speech(request: TTSRequest):
         400: {"model": ErrorResponse},
         500: {"model": ErrorResponse}
     },
-    summary="Generate speech with custom voice upload",
-    description="Generate speech audio from input text with optional custom voice file upload"
+    summary="Generate speech with custom voice upload or library selection",
+    description="Generate speech audio from input text with voice library selection or optional custom voice file upload"
 )
 async def text_to_speech_with_upload(
     input: str = Form(..., description="The text to generate audio for", min_length=1, max_length=3000),
-    voice: Optional[str] = Form("alloy", description="Voice to use (ignored - uses voice sample)"),
+    voice: Optional[str] = Form("alloy", description="Voice name from library or OpenAI voice name (defaults to configured sample)"),
     response_format: Optional[str] = Form("wav", description="Audio format (always returns WAV)"),
     speed: Optional[float] = Form(1.0, description="Speed of speech (ignored)"),
     exaggeration: Optional[float] = Form(None, description="Emotion intensity (0.25-2.0)", ge=0.25, le=2.0),
@@ -547,10 +586,19 @@ async def text_to_speech_with_upload(
     
     input = input.strip()
     
-    # Handle voice file upload
+    # Handle voice selection and file upload
     temp_voice_path = None
     voice_sample_path = Config.VOICE_SAMPLE_PATH  # Default
     
+    # First, try to resolve voice name from library if no file uploaded
+    if not voice_file:
+        try:
+            voice_sample_path = resolve_voice_path(voice)
+        except HTTPException:
+            # If voice name not found, use default (ignore error for backward compatibility)
+            pass
+    
+    # If a file is uploaded, it takes priority over voice name
     if voice_file:
         try:
             # Validate the uploaded file
@@ -622,19 +670,23 @@ async def text_to_speech_with_upload(
     responses={
         200: {"content": {"audio/wav": {}}},
         400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
         500: {"model": ErrorResponse}
     },
     summary="Stream speech generation from text",
-    description="Generate and stream speech audio in real-time as chunks are processed (JSON only). For custom voice upload streaming, use /audio/speech/stream/upload endpoint."
+    description="Generate and stream speech audio in real-time. Supports voice names from the voice library or defaults to configured voice sample."
 )
 async def stream_text_to_speech(request: TTSRequest):
-    """Stream speech generation from text using Chatterbox TTS with configured voice sample (JSON)"""
+    """Stream speech generation from text using Chatterbox TTS with voice selection support"""
+    
+    # Resolve voice name to file path
+    voice_sample_path = resolve_voice_path(request.voice)
     
     # Create streaming response
     return StreamingResponse(
         generate_speech_streaming(
             text=request.input,
-            voice_sample_path=Config.VOICE_SAMPLE_PATH,
+            voice_sample_path=voice_sample_path,
             exaggeration=request.exaggeration,
             cfg_weight=request.cfg_weight,
             temperature=request.temperature,
@@ -665,7 +717,7 @@ async def stream_text_to_speech(request: TTSRequest):
 )
 async def stream_text_to_speech_with_upload(
     input: str = Form(..., description="The text to generate audio for", min_length=1, max_length=3000),
-    voice: Optional[str] = Form("alloy", description="Voice to use (ignored - uses voice sample)"),
+    voice: Optional[str] = Form("alloy", description="Voice name from library or OpenAI voice name (defaults to configured sample)"),
     response_format: Optional[str] = Form("wav", description="Audio format (always returns WAV)"),
     speed: Optional[float] = Form(1.0, description="Speed of speech (ignored)"),
     exaggeration: Optional[float] = Form(None, description="Emotion intensity (0.25-2.0)", ge=0.25, le=2.0),
@@ -700,10 +752,19 @@ async def stream_text_to_speech_with_upload(
             detail={"error": {"message": "streaming_quality must be one of: fast, balanced, high", "type": "validation_error"}}
         )
     
-    # Handle voice file upload
+    # Handle voice selection and file upload
     temp_voice_path = None
     voice_sample_path = Config.VOICE_SAMPLE_PATH  # Default
     
+    # First, try to resolve voice name from library if no file uploaded
+    if not voice_file:
+        try:
+            voice_sample_path = resolve_voice_path(voice)
+        except HTTPException:
+            # If voice name not found, use default (ignore error for backward compatibility)
+            pass
+    
+    # If a file is uploaded, it takes priority over voice name
     if voice_file:
         try:
             # Validate the uploaded file

@@ -25,10 +25,10 @@
 ⚡ **FastAPI Performance** - High-performance async API with automatic documentation  
 🎨 **React Frontend** - Includes an optional, ready-to-use web interface  
 🎭 **Voice Cloning** - Use your own voice samples for personalized speech  
-🎤 **Voice Upload** - Upload custom voice files per request or use configured default  
+🎤 **Voice Library Management** - Upload, manage, and use custom voices by name  
 📝 **Smart Text Processing** - Automatic chunking for long texts  
 📊 **Real-time Status** - Monitor TTS progress, statistics, and request history  
-🐳 **Docker Ready** - Full containerization support  
+🐳 **Docker Ready** - Full containerization with persistent voice storage  
 ⚙️ **Configurable** - Extensive environment variable configuration  
 🎛️ **Parameter Control** - Real-time adjustment of speech characteristics  
 📚 **Auto Documentation** - Interactive API docs at `/docs` and `/redoc`  
@@ -239,6 +239,28 @@ curl -X POST http://localhost:4123/v1/audio/speech/upload \
   -F "voice_file=@dramatic_voice.wav" \
   --output dramatic.wav
 ```
+
+### Voice Library Management
+
+Store and manage custom voices by name for reuse across requests:
+
+```bash
+# Upload a voice to the library
+curl -X POST http://localhost:4123/v1/voices \
+  -F "voice_file=@my_voice.wav" \
+  -F "name=my-custom-voice"
+
+# Use the voice by name in speech generation
+curl -X POST http://localhost:4123/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Hello with my custom voice!", "voice": "my-custom-voice"}' \
+  --output custom_voice_output.wav
+
+# List all available voices
+curl http://localhost:4123/v1/voices
+```
+
+**🔧 [Complete Voice Library Documentation →](docs/VOICE_LIBRARY_MANAGEMENT.md)**
 
 ## 🎵 Real-time Audio Streaming
 
@@ -837,8 +859,11 @@ python start.py info
 # Install in development mode (pip)
 pip install -e .
 
-# Or with uv
-uv sync --extra dev
+# Or with uv (basic development tools)
+uv sync
+
+# Or with test dependencies (for contributors)
+uv sync --group test
 
 # Start with auto-reload (FastAPI development)
 uvicorn app.main:app --host 0.0.0.0 --port 4123 --reload

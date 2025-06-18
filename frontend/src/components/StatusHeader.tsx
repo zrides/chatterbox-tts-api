@@ -1,6 +1,6 @@
-import React from 'react';
-import { AlertCircle, CheckCircle, Activity, Clock, Cpu } from 'lucide-react';
-import type { HealthResponse, TTSProgress, TTSStatistics } from '../types';
+import React, { useState } from 'react';
+import { AlertCircle, CheckCircle, Activity, Clock, Cpu, Settings, Star } from 'lucide-react';
+import type { HealthResponse, TTSProgress, TTSStatistics, VoiceSample } from '../types';
 
 interface StatusHeaderProps {
   health: HealthResponse | undefined;
@@ -9,6 +9,17 @@ interface StatusHeaderProps {
   isLoadingHealth: boolean;
   hasErrors: boolean;
   apiVersion?: string;
+  progressSettings?: {
+    onlyShowMyRequests: boolean;
+    onToggleOnlyMyRequests: () => void;
+  };
+  defaultVoiceSettings?: {
+    defaultVoice: string | null;
+    voices: VoiceSample[];
+    onSetDefaultVoice: (voiceName: string) => Promise<boolean>;
+    onClearDefaultVoice: () => Promise<boolean>;
+    isLoading: boolean;
+  };
 }
 
 export default function StatusHeader({
@@ -17,8 +28,11 @@ export default function StatusHeader({
   statistics,
   isLoadingHealth,
   hasErrors,
-  apiVersion
+  apiVersion,
+  progressSettings,
+  defaultVoiceSettings
 }: StatusHeaderProps) {
+  const [showSettings, setShowSettings] = useState(false);
 
   const getStatusInfo = () => {
     if (hasErrors) {
@@ -34,8 +48,36 @@ export default function StatusHeader({
       return {
         color: 'text-muted-foreground',
         icon: <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />,
-        status: 'Loading...',
-        subtitle: 'Connecting to API'
+        status: 'Connecting...',
+        subtitle: 'Establishing connection'
+      };
+    }
+
+    // Handle initialization states
+    if (health.initialization_state === 'initializing') {
+      return {
+        color: 'text-blue-600 dark:text-blue-400',
+        icon: <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 dark:border-blue-400" />,
+        status: 'Initializing Model',
+        subtitle: health.initialization_progress || 'Loading TTS model...'
+      };
+    }
+
+    if (health.initialization_state === 'error') {
+      return {
+        color: 'text-destructive',
+        icon: <AlertCircle className="w-4 h-4" />,
+        status: 'Initialization Failed',
+        subtitle: health.initialization_error || 'Model failed to load'
+      };
+    }
+
+    if (health.initialization_state === 'starting' || health.status === 'starting') {
+      return {
+        color: 'text-yellow-600 dark:text-yellow-400',
+        icon: <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600 dark:border-yellow-400" />,
+        status: 'Starting Up',
+        subtitle: 'Server is starting...'
       };
     }
 
@@ -90,7 +132,7 @@ export default function StatusHeader({
   };
 
   return (
-    <div className="text-center">
+    <div className="text-center relative">
       <h1 className="text-4xl font-bold text-foreground mb-2">
         🎤 Chatterbox TTS
       </h1>
@@ -129,6 +171,121 @@ export default function StatusHeader({
           </div>
         )}
       </div>
+
+      {/* Settings Button */}
+      {(progressSettings || defaultVoiceSettings) && (
+        <div className="absolute right-0 sm:right-4 top-12 flex items-center gap-2">
+          <div className="relative">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="relative p-2 rounded-lg hover:bg-accent border border-border bg-card duration-300 dark:shadow-sm dark:hover:shadow-md cursor-pointer"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 text-foreground" />
+              <span className="sr-only">Settings</span>
+            </button>
+
+            {showSettings && (
+              <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-4 min-w-64 z-10">
+                <h3 className="text-sm font-medium text-foreground mb-3">Settings</h3>
+
+                <div className="space-y-4">
+                  {/* Progress Settings */}
+                  {progressSettings && (
+                    <div>
+                      <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Progress</h4>
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={progressSettings.onlyShowMyRequests}
+                          onChange={progressSettings.onToggleOnlyMyRequests}
+                          className="w-4 h-4 text-primary border-border rounded focus:ring-primary focus:ring-2"
+                        />
+                        <div className="text-left">
+                          <div className="text-sm font-medium text-foreground">
+                            Only show my requests
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Only display progress for TTS requests made from this browser tab
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Default Voice Settings */}
+                  {defaultVoiceSettings && (
+                    <div>
+                      <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Default Voice</h4>
+                      {defaultVoiceSettings.isLoading ? (
+                        <div className="text-sm text-muted-foreground">Loading voices...</div>
+                      ) : defaultVoiceSettings.voices.length === 0 ? (
+                        <div className="text-sm text-muted-foreground">No voices available</div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="text-xs text-muted-foreground mb-2">
+                            Select which voice to use as default when no voice is specified
+                          </div>
+                          <div className="max-h-32 overflow-y-auto space-y-1">
+                            {/* None/System Default */}
+                            <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-accent">
+                              <input
+                                type="radio"
+                                name="defaultVoice"
+                                checked={!defaultVoiceSettings.defaultVoice}
+                                onChange={() => defaultVoiceSettings.onClearDefaultVoice()}
+                                className="w-3 h-3 text-primary"
+                              />
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground">(System Default)</span>
+                              </div>
+                            </label>
+                            {/* Voice Options */}
+                            {defaultVoiceSettings.voices.map((voice) => (
+                              <label key={voice.id} className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-accent">
+                                <input
+                                  type="radio"
+                                  name="defaultVoice"
+                                  checked={defaultVoiceSettings.defaultVoice === voice.name}
+                                  onChange={() => defaultVoiceSettings.onSetDefaultVoice(voice.name)}
+                                  className="w-3 h-3 text-primary"
+                                />
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-foreground">{voice.name}</span>
+                                  {defaultVoiceSettings.defaultVoice === voice.name && (
+                                    <Star className="w-3 h-3 text-yellow-500 fill-current" />
+                                  )}
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-border">
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="text-xs text-primary hover:text-primary/80 transition-colors duration-200 w-full text-center"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Click outside to close settings */}
+      {showSettings && (
+        <div
+          className="fixed inset-0 z-0"
+          onClick={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 } 

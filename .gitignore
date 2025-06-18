@@ -92,3 +92,8 @@ temp/
 *.tmp 
 
 node_modules/
+
+voices/
+
+coverage.xml
+test_*

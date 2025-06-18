@@ -31,6 +31,9 @@ class Config:
     DEVICE_OVERRIDE = os.getenv('DEVICE', 'auto')
     MODEL_CACHE_DIR = os.getenv('MODEL_CACHE_DIR', './models')
     
+    # Voice library settings
+    VOICE_LIBRARY_DIR = os.getenv('VOICE_LIBRARY_DIR', './voices')
+    
     # Memory management settings
     MEMORY_CLEANUP_INTERVAL = int(os.getenv('MEMORY_CLEANUP_INTERVAL', 5))
     CUDA_CACHE_CLEAR_INTERVAL = int(os.getenv('CUDA_CACHE_CLEAR_INTERVAL', 3))

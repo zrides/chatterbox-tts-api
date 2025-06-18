@@ -100,7 +100,21 @@ export default function VoiceUploadModal({ open, onOpenChange, onUpload }: Voice
       }, 1500);
     } catch (error) {
       setUploadState('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Upload failed. Please try again.');
+
+      // Extract error message from API response
+      let errorMsg = 'Upload failed. Please try again.';
+      if (error instanceof Error) {
+        errorMsg = error.message;
+      }
+      // Handle axios errors with response data
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as any;
+        if (axiosError.response?.data?.error?.message) {
+          errorMsg = axiosError.response.data.error.message;
+        }
+      }
+
+      setErrorMessage(errorMsg);
     }
   }, [selectedFile, customName, onUpload, handleClose]);
 

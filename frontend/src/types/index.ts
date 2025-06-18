@@ -1,9 +1,11 @@
 export interface TTSRequest {
   input: string;
+  voice?: string;
   exaggeration?: number;
   cfg_weight?: number;
   temperature?: number;
   voice_file?: File;
+  session_id?: string;
 }
 
 export interface HealthResponse {
@@ -11,6 +13,13 @@ export interface HealthResponse {
   model_loaded: boolean;
   device: string;
   config: any;
+  memory_info?: {
+    cpu_memory_mb: number;
+    gpu_memory_allocated_mb: number;
+  };
+  initialization_state?: string;
+  initialization_progress?: string;
+  initialization_error?: string;
 }
 
 // New status API types
@@ -25,6 +34,8 @@ export interface TTSProgress {
   estimated_completion?: number;
   text_preview?: string;
   message?: string;
+  request_id?: string;
+  session_id?: string;
 }
 
 export interface TTSStatistics {
@@ -122,4 +133,26 @@ export interface AudioRecord {
     voiceId?: string;
     voiceName?: string;
   };
+}
+
+export interface VoiceLibraryItem {
+  name: string;
+  filename: string;
+  original_filename: string;
+  file_extension: string;
+  file_size: number;
+  upload_date: string;
+  path: string;
+}
+
+export interface VoiceLibraryResponse {
+  voices: VoiceLibraryItem[];
+  count: number;
+}
+
+export interface DefaultVoiceResponse {
+  default_voice: string | null;
+  source: 'voice_library' | 'file_system';
+  voice_info?: VoiceLibraryItem;
+  path?: string;
 } 

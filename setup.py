@@ -13,7 +13,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="chatterbox-tts-api",
-    version="1.3.0",
+    version="1.4.0",
     author="Travis Van Nimwegen",
     author_email="tts@travis2.com",
     description="REST API for Chatterbox TTS with OpenAI compatibility",

@@ -21,6 +21,8 @@ import { useAudioHistory } from './hooks/useAudioHistory';
 import { useAdvancedSettings } from './hooks/useAdvancedSettings';
 import { useTextInput } from './hooks/useTextInput';
 import { useStatusMonitoring } from './hooks/useStatusMonitoring';
+import { useProgressSettings } from './hooks/useProgressSettings';
+import { useDefaultVoice } from './hooks/useDefaultVoice';
 import { getFrontendVersion } from './lib/version';
 import type { TTSRequest, HealthResponse } from './types';
 
@@ -55,6 +57,7 @@ function App() {
     addVoice,
     deleteVoice,
     renameVoice,
+    refreshVoices,
     isLoading: voicesLoading
   } = useVoiceLibrary();
 
@@ -68,8 +71,25 @@ function App() {
     isLoading: historyLoading
   } = useAudioHistory();
 
-  // Create TTS service with current API base URL
-  const ttsService = useMemo(() => createTTSService(apiBaseUrl), [apiBaseUrl]);
+  // Progress settings and session tracking
+  const {
+    settings: progressSettings,
+    updateSettings: updateProgressSettings,
+    trackRequest,
+    shouldShowProgress,
+    dismissProgress,
+    sessionId
+  } = useProgressSettings();
+
+  // Default voice management
+  const {
+    defaultVoice,
+    updateDefaultVoice,
+    clearDefaultVoice
+  } = useDefaultVoice();
+
+  // Create TTS service with current API base URL and session ID
+  const ttsService = useMemo(() => createTTSService(apiBaseUrl, sessionId), [apiBaseUrl, sessionId]);
 
   // Status monitoring with real-time updates
   const {
@@ -100,6 +120,12 @@ function App() {
 
   const generateMutation = useMutation({
     mutationFn: ttsService.generateSpeech,
+    onMutate: (variables) => {
+      // Track this request as originating from this frontend
+      if (variables.session_id) {
+        trackRequest(variables.session_id);
+      }
+    },
     onSuccess: async (audioBlob) => {
       // Clean up previous audio URL
       if (audioUrl) {
@@ -139,13 +165,25 @@ function App() {
       return;
     }
 
-    generateMutation.mutate({
+    // For backend voices, use the voice name; for file uploads, use voice_file
+    const requestData: TTSRequest = {
       input: text,
       exaggeration,
       cfg_weight: cfgWeight,
-      temperature,
-      voice_file: selectedVoice?.file || undefined
-    });
+      temperature
+    };
+
+    if (selectedVoice) {
+      // Use voice name for backend voice library
+      requestData.voice = selectedVoice.name;
+
+      // Also include voice file if it's a client-side voice (for backward compatibility)
+      if (selectedVoice.file) {
+        requestData.voice_file = selectedVoice.file;
+      }
+    }
+
+    generateMutation.mutate(requestData);
   };
 
 
@@ -165,6 +203,19 @@ function App() {
                   isLoadingHealth={isLoadingHealth}
                   hasErrors={statusHasError}
                   apiVersion={apiInfo?.version || apiInfo?.api_version}
+                  progressSettings={{
+                    onlyShowMyRequests: progressSettings.onlyShowMyRequests,
+                    onToggleOnlyMyRequests: () => updateProgressSettings({
+                      onlyShowMyRequests: !progressSettings.onlyShowMyRequests
+                    })
+                  }}
+                  defaultVoiceSettings={{
+                    defaultVoice,
+                    voices,
+                    onSetDefaultVoice: updateDefaultVoice,
+                    onClearDefaultVoice: clearDefaultVoice,
+                    isLoading: voicesLoading
+                  }}
                 />
               </div>
               <div className="absolute right-0 sm:right-4 top-0 flex items-center gap-2">
@@ -216,7 +267,11 @@ function App() {
                   onAddVoice={addVoice}
                   onDeleteVoice={deleteVoice}
                   onRenameVoice={renameVoice}
+                  onRefresh={refreshVoices}
                   isLoading={voicesLoading}
+                  defaultVoice={defaultVoice}
+                  onSetDefaultVoice={updateDefaultVoice}
+                  onClearDefaultVoice={clearDefaultVoice}
                 />
 
                 {/* Advanced Settings */}
@@ -325,7 +380,8 @@ function App() {
         {/* Progress Overlay */}
         <StatusProgressOverlay
           progress={progress}
-          isVisible={generateMutation.isPending || isProcessing}
+          isVisible={generateMutation.isPending || (isProcessing && shouldShowProgress(progress?.request_id))}
+          onDismiss={dismissProgress}
         />
       </div>
     </>

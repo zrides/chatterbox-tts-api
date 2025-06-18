@@ -5,6 +5,145 @@ All notable changes to the Chatterbox TTS API project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-06-18
+
+### Added
+
+#### Voice Library Management System
+
+- **Comprehensive Voice CRUD Operations**:
+  - Voice upload with automatic validation and storage
+  - Voice retrieval with metadata and file serving
+  - Voice deletion with cleanup and validation
+  - Voice renaming with conflict detection
+  - List all voices with detailed metadata
+- **Voice Storage Infrastructure**:
+  - Persistent voice storage with configurable directories
+  - Environment-based configuration for voice storage paths
+  - Automatic voice file organization and cleanup
+  - Safe file handling with validation and sanitization
+
+#### New API Endpoints
+
+- **Voice Management Endpoints**:
+  - `POST /voices/upload` - Upload custom voice samples with metadata
+  - `GET /voices` - List all available voices with details
+  - `GET /voices/{voice_name}` - Retrieve specific voice information
+  - `GET /voices/{voice_name}/file` - Download voice file
+  - `DELETE /voices/{voice_name}` - Delete voice with confirmation
+  - `PUT /voices/{voice_name}/rename` - Rename voice with validation
+- **Enhanced Health Checks**:
+  - Improved health endpoint with voice storage validation
+  - System status checks including voice directory health
+  - Enhanced API information with voice library status
+
+#### Default Voice Management
+
+- **Default Voice System**:
+  - Configurable default voice selection and management
+  - Automatic fallback to system default when custom default unavailable
+  - Default voice validation and health monitoring
+  - Environment-based default voice configuration
+- **Voice Configuration**:
+  - Persistent default voice settings across sessions
+  - Voice availability validation and error handling
+  - Seamless integration with existing TTS endpoints
+
+#### Frontend Voice Library Integration
+
+- **Voice Library Components**:
+  - Interactive voice library management interface
+  - Voice upload modal with validation and feedback
+  - Voice selection dropdown with default voice indicator
+  - Voice deletion confirmation with safety checks
+- **Voice Library Management**:
+  - Real-time voice library updates and synchronization
+  - Voice metadata display including file size and type
+  - Drag-and-drop voice upload support
+  - Voice preview and testing capabilities
+- **Default Voice Settings**:
+  - Default voice selector with persistent settings
+  - Visual indicators for default voice status
+  - Automatic UI updates when default voice changes
+  - Voice availability status in the interface
+
+### Enhanced
+
+#### Backend Improvements
+
+- **Voice Storage Architecture**:
+  - Robust file system integration with proper error handling
+  - Thread-safe voice operations with proper locking
+  - Enhanced validation for voice file formats and quality
+  - Automatic cleanup of orphaned voice files
+- **Configuration Management**:
+  - Environment variable support for voice storage configuration
+  - Configurable voice directory paths and permissions
+  - Enhanced configuration validation and error reporting
+  - Better default value management for voice settings
+
+#### API Architecture
+
+- **Enhanced Request Validation**:
+  - Comprehensive voice parameter validation
+  - File upload validation with size and format checks
+  - Voice name sanitization and conflict detection
+  - Improved error messages and status codes
+- **Response Models**:
+  - Structured voice metadata response models
+  - Enhanced voice list responses with detailed information
+  - Better error response formatting for voice operations
+  - Consistent API response patterns across voice endpoints
+
+#### Frontend Enhancements
+
+- **User Experience Improvements**:
+  - Intuitive voice management workflows
+  - Real-time feedback for voice operations
+  - Enhanced loading states and progress indicators
+  - Better error handling and user notifications
+- **State Management**:
+  - Centralized voice library state management
+  - Optimistic updates for voice operations
+  - Real-time synchronization with backend voice changes
+  - Persistent voice preferences and settings
+
+### Technical Details
+
+#### New Functions Added
+
+- `upload_voice()` - Voice upload handler with validation
+- `get_voices()` - Voice listing with metadata retrieval
+- `get_voice_file()` - Voice file serving and download
+- `delete_voice()` - Safe voice deletion with cleanup
+- `rename_voice()` - Voice renaming with conflict checking
+- `set_default_voice()` - Default voice management
+- `validate_voice_file()` - Voice file validation and processing
+
+#### Configuration Enhancements
+
+- Voice storage directory configuration via environment variables
+- Default voice management through configuration system
+- Enhanced health checks with voice storage validation
+- Voice-related environment variable documentation
+
+#### Frontend Components Added
+
+- `VoiceLibrary` - Main voice library management component
+- `VoiceUploadModal` - Voice upload interface with validation
+- `useVoiceLibrary` - Custom hook for voice library operations
+- `useDefaultVoice` - Custom hook for default voice management
+- Voice-related utilities and helpers for file handling
+
+### Infrastructure
+
+- **Environment Configuration**: Enhanced environment variable support for voice storage
+- **Documentation**: Updated API documentation with voice library endpoints
+- **Testing**: Extended test coverage for voice management operations
+- **Validation**: Comprehensive voice file and parameter validation
+
+---
+
 ## [1.3.0] - 2025-06-15
 
 ### Added

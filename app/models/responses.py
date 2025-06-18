@@ -14,6 +14,9 @@ class HealthResponse(BaseModel):
     device: str
     config: Dict[str, Any]
     memory_info: Optional[Dict[str, float]] = None
+    initialization_state: Optional[str] = None
+    initialization_progress: Optional[str] = None
+    initialization_error: Optional[str] = None
 
 
 class ModelInfo(BaseModel):

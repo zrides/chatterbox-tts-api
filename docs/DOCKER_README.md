@@ -147,37 +147,47 @@ nano .env  # or your preferred editor
 | `CFG_WEIGHT`        | `0.5`                | Pace control (0.0-1.0)          |
 | `TEMPERATURE`       | `0.8`                | Sampling temperature (0.05-5.0) |
 | `VOICE_SAMPLE_PATH` | `./voice-sample.mp3` | Path to voice sample            |
+| `VOICE_LIBRARY_DIR` | `/voices`            | Directory for voice library     |
 | `DEVICE`            | `auto`               | Device: auto/cuda/mps/cpu       |
 | `MAX_CHUNK_LENGTH`  | `280`                | Max characters per chunk        |
 
-### Voice Sample Configuration
+### Voice Configuration
 
-**Option 1: Default voice sample**
+#### Default Voice Sample
 
 ```bash
 # Place your voice sample in the project root
 cp your-voice.mp3 voice-sample.mp3
 ```
 
-**Option 2: Custom path via environment**
+Or use environment variables for custom paths:
 
 ```env
 VOICE_SAMPLE_PATH=/app/voice-samples/custom-voice.mp3
 VOICE_SAMPLE_HOST_PATH=./my-voices/custom-voice.mp3
 ```
 
-**Option 3: Multiple voice samples**
+#### Voice Library Management
+
+The voice library allows you to upload and manage multiple voices that persist across container restarts:
 
 ```bash
-mkdir voice-samples
-cp voice1.mp3 voice2.mp3 voice-samples/
+# Upload a voice to the library
+curl -X POST http://localhost:4123/v1/voices \
+  -F "voice_file=@my-voice.wav" \
+  -F "name=my-custom-voice"
+
+# Use the voice by name in speech generation
+curl -X POST http://localhost:4123/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Hello!", "voice": "my-custom-voice"}' \
+  --output output.wav
+
+# List available voices
+curl http://localhost:4123/v1/voices
 ```
 
-Then mount the directory:
-
-```env
-VOICE_SAMPLES_DIR=./voice-samples
-```
+**Voice Storage:** Voices are stored in the persistent `chatterbox-voices` Docker volume mounted at `/voices` inside the container.
 
 ## 🏗️ Build Options
 
