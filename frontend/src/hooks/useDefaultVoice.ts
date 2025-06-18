@@ -46,7 +46,7 @@ export function useDefaultVoice() {
   const clearDefaultVoice = useCallback(async () => {
     try {
       setError(null);
-      await ttsService.resetDefaultVoice();
+      await ttsService.clearDefaultVoice();
       setDefaultVoice(null);
       return true;
     } catch (error) {
