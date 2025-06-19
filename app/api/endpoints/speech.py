@@ -41,10 +41,7 @@ def resolve_voice_path(voice_name: Optional[str]) -> str:
         voice_name: Voice name from the request (can be None for default)
         
     Returns:
-        Path to the voice file
-        
-    Raises:
-        HTTPException: If voice name is provided but not found
+        Path to the voice file (falls back to default if voice not found)
     """
     # If no voice specified or voice is a default OpenAI voice name, use default
     openai_voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
@@ -57,15 +54,9 @@ def resolve_voice_path(voice_name: Optional[str]) -> str:
     voice_path = voice_lib.get_voice_path(voice_name)
     
     if voice_path is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "error": {
-                    "message": f"Voice '{voice_name}' not found in voice library. Use /voices endpoint to list available voices.",
-                    "type": "voice_not_found_error"
-                }
-            }
-        )
+        # Voice not found, fall back to default voice and log a warning
+        print(f"⚠️ Warning: Voice '{voice_name}' not found in voice library, using default voice")
+        return Config.VOICE_SAMPLE_PATH
     
     return voice_path
 
@@ -592,11 +583,7 @@ async def text_to_speech_with_upload(
     
     # First, try to resolve voice name from library if no file uploaded
     if not voice_file:
-        try:
-            voice_sample_path = resolve_voice_path(voice)
-        except HTTPException:
-            # If voice name not found, use default (ignore error for backward compatibility)
-            pass
+        voice_sample_path = resolve_voice_path(voice)
     
     # If a file is uploaded, it takes priority over voice name
     if voice_file:
@@ -758,11 +745,7 @@ async def stream_text_to_speech_with_upload(
     
     # First, try to resolve voice name from library if no file uploaded
     if not voice_file:
-        try:
-            voice_sample_path = resolve_voice_path(voice)
-        except HTTPException:
-            # If voice name not found, use default (ignore error for backward compatibility)
-            pass
+        voice_sample_path = resolve_voice_path(voice)
     
     # If a file is uploaded, it takes priority over voice name
     if voice_file:
