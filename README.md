@@ -35,9 +35,9 @@
 🔧 **Type Safety** - Full Pydantic validation for requests and responses  
 🧠 **Memory Management** - Advanced memory monitoring and automatic cleanup
 
-## Quick Start
+## ⚡️ Quick Start
 
-### Local Installation
+### Local Installation with Python 🐍
 
 #### Option A: Using uv (Recommended - Faster & Better Dependencies)
 
@@ -91,7 +91,7 @@ python main.py
 
 > Ran into issues? Check the [troubleshooting section](https://github.com/travisvn/chatterbox-tts-api?tab=readme-ov-file#common-issues)
 
-### Docker (Recommended)
+### 🐳 Docker (Recommended)
 
 ```bash
 # Clone and start with Docker Compose
@@ -404,7 +404,7 @@ Including real-time playback, progress monitoring, custom voice uploads, and adv
 - Avoid background noise for best results
 - Higher quality audio produces better voice cloning
 
-## Configuration
+## 🎛️ Configuration
 
 The project provides two environment example files:
 
@@ -918,3 +918,32 @@ curl http://localhost:4123/openapi.json
 - 📖 **Documentation**: See [API Documentation](docs/API_README.md) and [Docker Guide](docs/DOCKER_README.md)
 - 🐛 **Issues**: Report bugs and feature requests via GitHub issues
 - 💬 **Discord**: [Join the Discord for this project](http://chatterboxtts.com/discord)
+
+---
+
+## 🔗 Integrations 
+
+### Open WebUI
+
+> [!TIP]
+> Customize available voices first by using the frontend at `http://localhost:4321`
+
+To use Chatterbox TTS API with Open WebUI, follow these steps:
+
+- Open the Admin Panel and go to `Settings` -> `Audio`
+- Set your TTS Settings to match the following:
+  - Text-to-Speech Engine: _OpenAI_
+  - API Base URL: `http://localhost:4123/v1` # alternatively, try `http://host.docker.internal:4123/v1`
+  - API Key: `none`
+  - TTS Model: `tts-1` or `tts-1-hd`
+  - TTS Voice: _Name of the voice you've cloned_ (can also include aliases, defined in the frontend)
+  - Response splitting: `Paragraphs`
+ 
+
+<p align="center">
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUjUe3QjHytHQ0xqn2CishmXgGfeJ4o983TUMO" alt="Settings to integrate Chatterbox TTS API with Open WebUI" />
+</p>
+
+
+> 💡 _More integration examples coming soon_
+
