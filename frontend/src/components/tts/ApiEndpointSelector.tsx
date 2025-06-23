@@ -39,7 +39,7 @@ export default function ApiEndpointSelector({ apiBaseUrl, onUrlChange }: ApiEndp
   return (
     <Card className="p-4">
       <CardContent className="p-0">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-col gap-2 sm:flex-row">
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">API Endpoint:</span>

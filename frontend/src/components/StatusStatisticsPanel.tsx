@@ -62,12 +62,12 @@ export default function StatusStatisticsPanel({
     {
       name: 'Completed',
       value: statistics.completed_requests,
-      fill: 'hsl(var(--chart-2))'
+      fill: 'var(--color-chart-2)'
     },
     {
       name: 'Errors',
       value: statistics.error_requests,
-      fill: 'hsl(var(--chart-5))'
+      fill: 'var(--color-chart-5)'
     }
   ];
 
@@ -75,31 +75,31 @@ export default function StatusStatisticsPanel({
     {
       name: 'CPU',
       value: statistics.current_memory.cpu_memory_mb,
-      fill: 'hsl(var(--chart-1))'
+      fill: 'var(--color-chart-1)'
     },
     {
       name: 'GPU',
       value: statistics.current_memory.gpu_memory_allocated_mb,
-      fill: 'hsl(var(--chart-3))'
+      fill: 'var(--color-chart-3)'
     }
   ] : [];
 
   const chartConfig = {
     completed: {
       label: "Completed",
-      color: "hsl(var(--chart-2))",
+      color: "var(--color-chart-2)",
     },
     errors: {
       label: "Errors",
-      color: "hsl(var(--chart-5))",
+      color: "var(--color-chart-5)",
     },
     cpu: {
       label: "CPU Memory",
-      color: "hsl(var(--chart-1))",
+      color: "var(--color-chart-1)",
     },
     gpu: {
       label: "GPU Memory",
-      color: "hsl(var(--chart-3))",
+      color: "var(--color-chart-3)",
     },
   };
 

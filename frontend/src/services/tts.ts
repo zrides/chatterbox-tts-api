@@ -267,7 +267,37 @@ export const createTTSService = (baseUrl: string, sessionId?: string) => ({
     }
 
     return response.json();
-  }
+  },
+
+  // Advanced memory management endpoints
+  getMemoryConfig: async () => {
+    const response = await axios.get(`${baseUrl}/memory/config`);
+    return response.data;
+  },
+
+  updateMemoryConfig: async (config: { cpu_memory_percent?: number; gpu_memory_mb?: number }) => {
+    const params = new URLSearchParams();
+    if (config.cpu_memory_percent !== undefined) {
+      params.append('cpu_memory_percent', config.cpu_memory_percent.toString());
+    }
+    if (config.gpu_memory_mb !== undefined) {
+      params.append('gpu_memory_mb', config.gpu_memory_mb.toString());
+    }
+
+    const response = await axios.post(`${baseUrl}/memory/config?${params.toString()}`);
+    return response.data;
+  },
+
+  getMemoryRecommendations: async () => {
+    const response = await axios.get(`${baseUrl}/memory/recommendations`);
+    return response.data;
+  },
+
+  getMemoryWithAlerts: async (includeAlerts = true) => {
+    const params = includeAlerts ? '?include_alerts=true' : '';
+    const response = await axios.get(`${baseUrl}/memory${params}`);
+    return response.data;
+  },
 });
 
 export type TTSService = ReturnType<typeof createTTSService>; 

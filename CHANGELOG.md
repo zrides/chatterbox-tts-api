@@ -5,6 +5,24 @@ All notable changes to the Chatterbox TTS API project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2025-06-23
+
+### Added
+
+- **Memory Management Page**: New frontend page for monitoring and managing backend memory usage
+- **Memory Management API Endpoints**: New endpoints for memory info, cleanup, reset, and recommendations
+- **Navigation System**: Added Wouter-based routing between TTS and Memory Management pages
+- **Real-time Memory Monitoring**: Live tracking of CPU and GPU memory usage with trend charts
+- **Memory Alerts & Recommendations**: Intelligent alerts and optimization suggestions
+
+### Enhanced
+
+- **Frontend Polish**: Improved color schemes and visual consistency across components
+- **Memory Cleanup**: More robust memory management with configurable cleanup intervals
+- **User Experience**: Better responsive design and error handling
+
+---
+
 ## [1.4.1] - 2025-06-22
 
 ### Added

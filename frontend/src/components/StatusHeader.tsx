@@ -186,7 +186,7 @@ export default function StatusHeader({
             </button>
 
             {showSettings && (
-              <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-4 w-[500px] max-w-[70vw] z-10">
+              <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-4 w-[300px] sm:w-[500px] max-w-[70vw] z-10">
                 <h3 className="text-sm font-medium text-foreground mb-3">Settings</h3>
 
                 <div className="space-y-4">
