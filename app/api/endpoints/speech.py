@@ -35,25 +35,29 @@ SUPPORTED_AUDIO_FORMATS = {'.mp3', '.wav', '.flac', '.m4a', '.ogg'}
 
 def resolve_voice_path(voice_name: Optional[str]) -> str:
     """
-    Resolve a voice name to a file path.
+    Resolve a voice name or alias to a file path.
     
     Args:
-        voice_name: Voice name from the request (can be None for default)
+        voice_name: Voice name or alias from the request (can be None for default)
         
     Returns:
         Path to the voice file (falls back to default if voice not found)
     """
-    # If no voice specified or voice is a default OpenAI voice name, use default
-    openai_voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
-    
-    if not voice_name or voice_name.lower() in openai_voices:
+    # If no voice specified, use default
+    if not voice_name:
         return Config.VOICE_SAMPLE_PATH
     
-    # Try to resolve from voice library
+    # Try to resolve from voice library (handles both names and aliases)
     voice_lib = get_voice_library()
     voice_path = voice_lib.get_voice_path(voice_name)
     
     if voice_path is None:
+        # Check if it's an OpenAI voice name without an alias mapping
+        openai_voices = {"alloy", "echo", "fable", "onyx", "nova", "shimmer"}
+        if voice_name.lower() in openai_voices:
+            print(f"🎵 Using default voice for OpenAI voice '{voice_name}' (no alias mapping)")
+            return Config.VOICE_SAMPLE_PATH
+        
         # Voice not found, fall back to default voice and log a warning
         print(f"⚠️ Warning: Voice '{voice_name}' not found in voice library, using default voice")
         return Config.VOICE_SAMPLE_PATH

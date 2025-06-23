@@ -49,7 +49,7 @@ function App() {
     isDefault
   } = useAdvancedSettings();
 
-  // Voice library management
+  // Voice library management with backend health monitoring
   const {
     voices,
     selectedVoice,
@@ -58,7 +58,11 @@ function App() {
     deleteVoice,
     renameVoice,
     refreshVoices,
-    isLoading: voicesLoading
+    addAlias,
+    removeAlias,
+    isLoading: voicesLoading,
+    isBackendReady: voicesBackendReady,
+    error: voicesError
   } = useVoiceLibrary();
 
   // Audio history management
@@ -81,11 +85,14 @@ function App() {
     sessionId
   } = useProgressSettings();
 
-  // Default voice management
+  // Default voice management with backend health monitoring
   const {
     defaultVoice,
     updateDefaultVoice,
-    clearDefaultVoice
+    clearDefaultVoice,
+    isLoading: defaultVoiceLoading,
+    isBackendReady: defaultVoiceBackendReady,
+    healthStatus
   } = useDefaultVoice();
 
   // Create TTS service with current API base URL and session ID
@@ -103,7 +110,9 @@ function App() {
   const { data: health, isLoading: isLoadingHealth } = useQuery({
     queryKey: ['health', apiBaseUrl],
     queryFn: ttsService.getHealth,
-    refetchInterval: 30000
+    refetchInterval: 3000, // More frequent during startup
+    retry: true,
+    retryDelay: 1000
   });
 
   // Fetch API info (including version) periodically
@@ -186,7 +195,9 @@ function App() {
     generateMutation.mutate(requestData);
   };
 
-
+  // Determine if backend is ready for voice operations
+  const isBackendReady = voicesBackendReady && defaultVoiceBackendReady;
+  const isInitializing = healthStatus === 'initializing' || health?.status === 'initializing';
 
   return (
     <>
@@ -214,7 +225,7 @@ function App() {
                     voices,
                     onSetDefaultVoice: updateDefaultVoice,
                     onClearDefaultVoice: clearDefaultVoice,
-                    isLoading: voicesLoading
+                    isLoading: voicesLoading || defaultVoiceLoading
                   }}
                 />
               </div>
@@ -222,6 +233,26 @@ function App() {
                 <ThemeToggle />
               </div>
             </div>
+
+            {/* Backend Loading State */}
+            {(isInitializing || !isBackendReady) && (
+              <div className="w-full max-w-2xl mx-auto">
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    <span className="text-sm font-medium text-primary">
+                      {isInitializing ? 'Backend initializing...' : 'Loading voice library...'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isInitializing
+                      ? 'TTS model is starting up. Voice library will load once ready.'
+                      : 'Connecting to voice library and loading default settings.'
+                    }
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="w-full max-w-2xl mx-auto flex flex-col items-center justify-center gap-4">
 
@@ -272,7 +303,24 @@ function App() {
                   defaultVoice={defaultVoice}
                   onSetDefaultVoice={updateDefaultVoice}
                   onClearDefaultVoice={clearDefaultVoice}
+                  onAddAlias={addAlias}
+                  onRemoveAlias={removeAlias}
                 />
+
+                {/* Voice Library Error Display */}
+                {voicesError && !voicesLoading && (
+                  <div className="text-center py-4 text-muted-foreground">
+                    <p className="text-sm text-destructive mb-2">
+                      Failed to load voice library: {voicesError.message || 'Unknown error'}
+                    </p>
+                    <button
+                      onClick={refreshVoices}
+                      className="text-xs text-primary hover:text-primary/80 underline"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
 
                 {/* Advanced Settings */}
                 <AdvancedSettings
@@ -290,100 +338,98 @@ function App() {
 
                 {/* Current Voice Indicator */}
                 {selectedVoice && (
-                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm text-primary">
-                      <Volume2 className="w-4 h-4" />
-                      <span>Using voice: <strong>{selectedVoice.name}</strong></span>
-                    </div>
+                  <div className="text-center text-sm text-muted-foreground">
+                    Using voice: <span className="font-medium text-foreground">{selectedVoice.name}</span>
+                    {defaultVoice === selectedVoice.name && (
+                      <span className="ml-2 text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 px-2 py-1 rounded">
+                        Default
+                      </span>
+                    )}
                   </div>
                 )}
 
                 {/* Generate Button */}
-                <div className="">
-                  <Button
-                    onClick={handleGenerate}
-                    disabled={generateMutation.isPending || !text.trim()}
-                    className="w-full py-6 px-6 text-xl [&_svg]:size-6 [&_svg:not([class*='size-'])]:size-6 flex gap-4"
-                  // size="lg"
-                  >
-                    {generateMutation.isPending ? (
-                      <>
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-current" />
-                        Generating Speech...
-                      </>
-                    ) : (
-                      <>
-                        <Volume2 className="w-6 h-6" />
-                        Generate Speech
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleGenerate}
+                  disabled={generateMutation.isPending || !hasText}
+                  className="w-full py-6 px-6 text-xl [&_svg]:size-6 [&_svg:not([class*='size-'])]:size-6 flex gap-4"
+                >
+                  <Volume2 className="w-5 h-5 mr-2" />
+                  {generateMutation.isPending ? 'Generating...' : 'Generate Speech'}
+                </Button>
 
                 {/* Audio Player */}
-                <AudioPlayer
-                  audioUrl={audioUrl}
-                />
+                {audioUrl && (
+                  <AudioPlayer audioUrl={audioUrl} />
+                )}
+              </div>
+            </div>
 
-                {/* Audio History */}
-                <AudioHistory
-                  audioHistory={audioHistory}
-                  onDeleteAudioRecord={deleteAudioRecord}
-                  onRenameAudioRecord={renameAudioRecord}
-                  onClearHistory={clearHistory}
-                  onRestoreSettings={(settings) => {
-                    updateExaggeration(settings.exaggeration);
-                    updateCfgWeight(settings.cfgWeight);
-                    updateTemperature(settings.temperature);
-                  }}
-                  onRestoreText={updateText}
-                  isLoading={historyLoading}
-                />
+            {/* Audio History */}
+            <div className="w-full max-w-2xl mx-auto">
+              <AudioHistory
+                audioHistory={audioHistory}
+                onDeleteAudioRecord={deleteAudioRecord}
+                onRenameAudioRecord={renameAudioRecord}
+                onClearHistory={clearHistory}
+                onRestoreSettings={(settings) => {
+                  updateExaggeration(settings.exaggeration);
+                  updateCfgWeight(settings.cfgWeight);
+                  updateTemperature(settings.temperature);
+                }}
+                onRestoreText={updateText}
+                isLoading={historyLoading}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="border-t border-border bg-card/50">
+          <div className="w-full max-w-4xl mx-auto px-4 py-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-muted-foreground flex flex-col gap-2">
+                <div className="flex flex-row gap-8">
+                  <span>Frontend v{getFrontendVersion()}</span>
+                  {apiInfo?.version && <span>API v{apiInfo.version}</span>}
+                </div>
+                {/* <div className="text-xs text-muted-foreground">
+                  © 2025 Chatterbox TTS API - Open Source Voice Cloning
+                </div> */}
+              </div>
+              <div className="flex items-center gap-4">
+                <a
+                  href="https://github.com/travisvn/chatterbox-tts-api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
+                >
+                  <Github className="w-4 h-4" />
+                  <span>GitHub</span>
+                </a>
+                <a
+                  href="https://chatterboxtts.com/discord"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Join Discord</span>
+                </a>
               </div>
             </div>
           </div>
+        </footer>
+      </div>
 
-          {/* Footer */}
-          <footer className="border-t border-border bg-card/50">
-            <div className="w-full max-w-4xl mx-auto px-4 py-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-sm text-muted-foreground">
-                  © 2025 Chatterbox TTS API - Open Source Voice Cloning
-                  <br />
-                  <span className="text-xs">Frontend v{getFrontendVersion()}</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <a
-                    href="https://github.com/travisvn/chatterbox-tts-api"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
-                  >
-                    <Github className="w-4 h-4" />
-                    <span>GitHub</span>
-                  </a>
-                  <a
-                    href="https://chatterboxtts.com/discord"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Join Discord</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </footer>
-        </div>
-
-        {/* Progress Overlay */}
+      {/* Progress Overlay */}
+      {shouldShowProgress(progress?.request_id) && progress && (
         <StatusProgressOverlay
           progress={progress}
-          isVisible={generateMutation.isPending || (isProcessing && shouldShowProgress(progress?.request_id))}
+          isVisible={shouldShowProgress(progress?.request_id)}
           onDismiss={dismissProgress}
         />
-      </div>
+      )}
     </>
   );
 }

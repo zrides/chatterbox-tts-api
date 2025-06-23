@@ -5,6 +5,24 @@ All notable changes to the Chatterbox TTS API project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2025-06-22
+
+### Added
+
+- **Voice Alias System**: Add multiple aliases to any voice with persistent storage and UI management
+- **OpenAI Voice Mapping**: Map OpenAI voice names (alloy, echo, fable, etc.) to custom voices via aliases
+- **Alias API Endpoints**: New endpoints for adding, removing, and listing voice aliases
+- **Alias UI Management**: Visual alias badges with inline editing and one-click removal
+
+### Fixed
+
+- **Default Voice Persistence**: Fixed default voice settings not persisting across frontend and backend sessions
+- **Voice Resolution**: Improved voice name resolution to handle both direct names and aliases
+- **Voice Library State**: Better synchronization between frontend and backend voice library state
+- **Error Handling**: Enhanced error handling for voice operations and alias conflicts
+
+---
+
 ## [1.4.0] - 2025-06-18
 
 ### Added

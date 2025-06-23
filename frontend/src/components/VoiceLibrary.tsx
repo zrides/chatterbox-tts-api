@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Trash2, Play, Pause, Upload, Edit2, Check, X, RefreshCw, Crown, Star, StarOff } from 'lucide-react';
+import { Trash2, Play, Pause, Upload, Edit2, Check, X, RefreshCw, Crown, Star, StarOff, Tag, Plus } from 'lucide-react';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -18,6 +18,8 @@ interface VoiceLibraryProps {
   defaultVoice?: string | null;
   onSetDefaultVoice?: (voiceName: string) => Promise<boolean>;
   onClearDefaultVoice?: () => Promise<boolean>;
+  onAddAlias?: (voiceName: string, alias: string) => Promise<boolean>;
+  onRemoveAlias?: (voiceName: string, alias: string) => Promise<boolean>;
 }
 
 export default function VoiceLibrary({
@@ -31,13 +33,17 @@ export default function VoiceLibrary({
   isLoading,
   defaultVoice,
   onSetDefaultVoice,
-  onClearDefaultVoice
+  onClearDefaultVoice,
+  onAddAlias,
+  onRemoveAlias
 }: VoiceLibraryProps) {
 
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [editingVoice, setEditingVoice] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [addingAliasFor, setAddingAliasFor] = useState<string | null>(null);
+  const [newAlias, setNewAlias] = useState('');
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Cleanup audio when component unmounts
@@ -112,6 +118,45 @@ export default function VoiceLibrary({
         }
       } catch (error) {
         alert('Failed to clear default voice. Please try again.');
+      }
+    }
+  };
+
+  const handleAddAlias = (voiceId: string) => {
+    setAddingAliasFor(voiceId);
+    setNewAlias('');
+  };
+
+  const handleSaveAlias = async () => {
+    if (addingAliasFor && newAlias.trim() && onAddAlias) {
+      try {
+        const success = await onAddAlias(addingAliasFor, newAlias.trim());
+        if (success) {
+          setAddingAliasFor(null);
+          setNewAlias('');
+        } else {
+          alert('Failed to add alias. Please try again.');
+        }
+      } catch (error: any) {
+        alert(error.message || 'Failed to add alias. Please try again.');
+      }
+    }
+  };
+
+  const handleCancelAlias = () => {
+    setAddingAliasFor(null);
+    setNewAlias('');
+  };
+
+  const handleRemoveAlias = async (voiceId: string, alias: string) => {
+    if (onRemoveAlias) {
+      try {
+        const success = await onRemoveAlias(voiceId, alias);
+        if (!success) {
+          alert('Failed to remove alias. Please try again.');
+        }
+      } catch (error: any) {
+        alert(error.message || 'Failed to remove alias. Please try again.');
       }
     }
   };
@@ -274,6 +319,72 @@ export default function VoiceLibrary({
                           <p className="text-xs text-muted-foreground">
                             {voice.uploadDate.toLocaleDateString()} • {(voice.file.size / 1024 / 1024).toFixed(1)}MB
                           </p>
+
+                          {/* Aliases display */}
+                          {voice.aliases && voice.aliases.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {voice.aliases.map((alias, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full"
+                                  title={`Alias: ${alias}`}
+                                >
+                                  <Tag className="w-3 h-3" />
+                                  {alias}
+                                  {onRemoveAlias && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveAlias(voice.id, alias);
+                                      }}
+                                      className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 duration-300 hover:text-destructive"
+                                      title="Remove alias"
+                                    >
+                                      <X className="w-2.5 h-2.5" />
+                                    </button>
+                                  )}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Add alias input */}
+                          {addingAliasFor === voice.id && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <Input
+                                type="text"
+                                value={newAlias}
+                                onChange={(e) => setNewAlias(e.target.value)}
+                                placeholder="Enter alias..."
+                                className="flex-1 text-xs h-8"
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveAlias();
+                                  if (e.key === 'Escape') handleCancelAlias();
+                                }}
+                                autoFocus
+                              />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSaveAlias();
+                                }}
+                                className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 rounded transition-colors duration-300"
+                                disabled={!newAlias.trim()}
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancelAlias();
+                                }}
+                                className="p-1 hover:bg-destructive/10 text-destructive rounded transition-colors duration-300"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -289,6 +400,19 @@ export default function VoiceLibrary({
                           title="Set as default voice"
                         >
                           <Star className="w-4 h-4" />
+                        </button>
+                      )}
+                      {/* Add Alias Button - only show if we have the handler */}
+                      {onAddAlias && addingAliasFor !== voice.id && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddAlias(voice.id);
+                          }}
+                          className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded transition-colors duration-300"
+                          title="Add alias"
+                        >
+                          <Plus className="w-4 h-4" />
                         </button>
                       )}
                       <button

@@ -117,6 +117,7 @@ export interface VoiceSample {
   file: File;
   audioUrl: string;
   uploadDate: Date;
+  aliases?: string[];
 }
 
 export interface AudioRecord {
@@ -143,6 +144,7 @@ export interface VoiceLibraryItem {
   file_size: number;
   upload_date: string;
   path: string;
+  aliases?: string[];
 }
 
 export interface VoiceLibraryResponse {

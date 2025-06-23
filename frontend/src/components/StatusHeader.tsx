@@ -186,14 +186,14 @@ export default function StatusHeader({
             </button>
 
             {showSettings && (
-              <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-4 min-w-64 z-10">
+              <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-lg shadow-lg p-4 w-[500px] max-w-[70vw] z-10">
                 <h3 className="text-sm font-medium text-foreground mb-3">Settings</h3>
 
                 <div className="space-y-4">
                   {/* Progress Settings */}
                   {progressSettings && (
                     <div>
-                      <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Progress</h4>
+                      <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide text-left">Progress</h4>
                       <label className="flex items-center gap-3 cursor-pointer">
                         <input
                           type="checkbox"
@@ -216,14 +216,14 @@ export default function StatusHeader({
                   {/* Default Voice Settings */}
                   {defaultVoiceSettings && (
                     <div>
-                      <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Default Voice</h4>
+                      <h4 className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide text-left">Default Voice</h4>
                       {defaultVoiceSettings.isLoading ? (
                         <div className="text-sm text-muted-foreground">Loading voices...</div>
                       ) : defaultVoiceSettings.voices.length === 0 ? (
                         <div className="text-sm text-muted-foreground">No voices available</div>
                       ) : (
                         <div className="space-y-2">
-                          <div className="text-xs text-muted-foreground mb-2">
+                          <div className="text-xs text-muted-foreground mb-2 text-left">
                             Select which voice to use as default when no voice is specified
                           </div>
                           <div className="max-h-32 overflow-y-auto space-y-1">

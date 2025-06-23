@@ -214,6 +214,59 @@ export const createTTSService = (baseUrl: string, sessionId?: string) => ({
     }
 
     return response.json();
+  },
+
+  // Alias management methods
+  addAlias: async (voiceName: string, alias: string): Promise<any> => {
+    const formData = new FormData();
+    formData.append('alias', alias);
+
+    const response = await fetch(`${baseUrl}/voices/${encodeURIComponent(voiceName)}/aliases`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.error?.message || `Failed to add alias: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  removeAlias: async (voiceName: string, alias: string): Promise<any> => {
+    const response = await fetch(`${baseUrl}/voices/${encodeURIComponent(voiceName)}/aliases/${encodeURIComponent(alias)}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.error?.message || `Failed to remove alias: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  listAliases: async (voiceName: string): Promise<{ voice_name: string; aliases: string[]; count: number }> => {
+    const response = await fetch(`${baseUrl}/voices/${encodeURIComponent(voiceName)}/aliases`);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.error?.message || `Failed to list aliases: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  getAllVoiceNames: async (): Promise<{ voice_names: string[]; count: number }> => {
+    const response = await fetch(`${baseUrl}/voices/all-names`);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.error?.message || `Failed to get all voice names: ${response.status}`);
+    }
+
+    return response.json();
   }
 });
 

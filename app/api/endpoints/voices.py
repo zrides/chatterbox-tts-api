@@ -403,6 +403,166 @@ async def delete_voice(voice_name: str):
 
 
 @router.post(
+    "/voices/{voice_name}/aliases",
+    responses={
+        201: {"description": "Alias added successfully"},
+        400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        409: {"model": ErrorResponse},
+        500: {"model": ErrorResponse}
+    },
+    summary="Add an alias to a voice",
+    description="Add an alternative name (alias) for a voice"
+)
+async def add_voice_alias(
+    voice_name: str,
+    alias: str = Form(..., description="The alias to add", min_length=1, max_length=100)
+):
+    """Add an alias to a voice"""
+    try:
+        voice_lib = get_voice_library()
+        success = voice_lib.add_alias(voice_name, alias)
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": {"message": f"Voice '{voice_name}' not found", "type": "voice_not_found_error"}}
+            )
+        
+        return JSONResponse(
+            status_code=status.HTTP_201_CREATED,
+            content={
+                "message": "Alias added successfully",
+                "voice_name": voice_name,
+                "alias": alias,
+                "aliases": voice_lib.list_aliases(voice_name)
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except FileExistsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {"message": str(e), "type": "alias_exists_error"}}
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"message": str(e), "type": "validation_error"}}
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": {"message": f"Failed to add alias: {str(e)}", "type": "voice_library_error"}}
+        )
+
+
+@router.delete(
+    "/voices/{voice_name}/aliases/{alias}",
+    responses={
+        200: {"description": "Alias removed successfully"},
+        404: {"model": ErrorResponse},
+        500: {"model": ErrorResponse}
+    },
+    summary="Remove an alias from a voice",
+    description="Remove an alternative name (alias) from a voice"
+)
+async def remove_voice_alias(voice_name: str, alias: str):
+    """Remove an alias from a voice"""
+    try:
+        voice_lib = get_voice_library()
+        success = voice_lib.remove_alias(voice_name, alias)
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": {"message": f"Voice '{voice_name}' or alias '{alias}' not found", "type": "voice_not_found_error"}}
+            )
+        
+        return {
+            "message": "Alias removed successfully",
+            "voice_name": voice_name,
+            "alias": alias,
+            "aliases": voice_lib.list_aliases(voice_name)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": {"message": f"Failed to remove alias: {str(e)}", "type": "voice_library_error"}}
+        )
+
+
+@router.get(
+    "/voices/{voice_name}/aliases",
+    responses={
+        200: {"description": "List of voice aliases"},
+        404: {"model": ErrorResponse},
+        500: {"model": ErrorResponse}
+    },
+    summary="List aliases for a voice",
+    description="Get all alternative names (aliases) for a voice"
+)
+async def list_voice_aliases(voice_name: str):
+    """List all aliases for a voice"""
+    try:
+        voice_lib = get_voice_library()
+        
+        # Check if voice exists
+        if voice_lib.get_voice_info(voice_name) is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error": {"message": f"Voice '{voice_name}' not found", "type": "voice_not_found_error"}}
+            )
+        
+        aliases = voice_lib.list_aliases(voice_name)
+        
+        return {
+            "voice_name": voice_name,
+            "aliases": aliases,
+            "count": len(aliases)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": {"message": f"Failed to list aliases: {str(e)}", "type": "voice_library_error"}}
+        )
+
+
+@router.get(
+    "/voices/all-names",
+    responses={
+        200: {"description": "List of all voice names and aliases"},
+        500: {"model": ErrorResponse}
+    },
+    summary="List all voice names and aliases",
+    description="Get all available voice names (including aliases) in the library"
+)
+async def list_all_voice_names():
+    """List all voice names and aliases"""
+    try:
+        voice_lib = get_voice_library()
+        all_names = voice_lib.get_all_voice_names()
+        
+        return {
+            "voice_names": all_names,
+            "count": len(all_names)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": {"message": f"Failed to list voice names: {str(e)}", "type": "voice_library_error"}}
+        )
+
+
+@router.post(
     "/voices/cleanup",
     responses={
         200: {"description": "Cleanup completed"},

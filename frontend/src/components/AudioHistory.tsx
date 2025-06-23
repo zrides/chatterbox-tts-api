@@ -197,7 +197,7 @@ export default function AudioHistory({
                   key={record.id}
                   className="group p-4 border border-border rounded-lg hover:border-accent-foreground/30 hover:bg-accent/30 duration-300"
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       {editingRecord === record.id ? (
                         <div className="flex items-center gap-2">
@@ -227,20 +227,7 @@ export default function AudioHistory({
                         </div>
                       ) : (
                         <>
-                          <h4 className="font-medium text-foreground truncate">{record.name}</h4>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                            <span>{record.createdAt.toLocaleDateString()}</span>
-                            <span>•</span>
-                            <span>{record.createdAt.toLocaleTimeString()}</span>
-                            <span>•</span>
-                            <span>{formatDuration(record.settings.text)}</span>
-                            {record.settings.voiceName && (
-                              <>
-                                <span>•</span>
-                                <span>{record.settings.voiceName}</span>
-                              </>
-                            )}
-                          </div>
+                          <h4 className="text-xl/normal font-medium text-foreground truncate">{record.name}</h4>
                         </>
                       )}
                     </div>
@@ -291,6 +278,20 @@ export default function AudioHistory({
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+                    <span>{record.createdAt.toLocaleDateString()}</span>
+                    <span>•</span>
+                    <span>{record.createdAt.toLocaleTimeString()}</span>
+                    <span>•</span>
+                    <span>{formatDuration(record.settings.text)}</span>
+                    {record.settings.voiceName && (
+                      <>
+                        <span>•</span>
+                        <span>{record.settings.voiceName}</span>
+                      </>
+                    )}
                   </div>
 
                   {/* Text Preview */}

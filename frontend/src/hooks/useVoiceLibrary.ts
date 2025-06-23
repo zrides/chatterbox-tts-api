@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createTTSService } from '../services/tts';
 import { useApiEndpoint } from './useApiEndpoint';
-import type { VoiceSample } from '../types';
+import type { VoiceSample, HealthResponse, VoiceLibraryResponse } from '../types';
 
 // Convert backend voice data to frontend VoiceSample format
 const convertToVoiceSample = (backendVoice: any): VoiceSample => {
@@ -10,67 +11,87 @@ const convertToVoiceSample = (backendVoice: any): VoiceSample => {
     name: backendVoice.name,
     file: null as any, // We don't have the original File object for backend voices
     audioUrl: '', // We'll generate this on demand via download endpoint
-    uploadDate: new Date(backendVoice.upload_date)
+    uploadDate: new Date(backendVoice.upload_date),
+    aliases: backendVoice.aliases || []
   };
 };
 
 export function useVoiceLibrary() {
-  const [voices, setVoices] = useState<VoiceSample[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<VoiceSample | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const { apiBaseUrl } = useApiEndpoint();
+  const queryClient = useQueryClient();
 
-  const ttsService = createTTSService(apiBaseUrl);
+  const ttsService = useMemo(() => createTTSService(apiBaseUrl), [apiBaseUrl]);
 
-  // Load voices from backend on mount
-  useEffect(() => {
-    const loadVoices = async () => {
-      try {
-        setIsLoading(true);
-        const response = await ttsService.getVoices();
+  // Monitor backend health to know when it's ready
+  const healthQuery = useQuery<HealthResponse>({
+    queryKey: ['health', apiBaseUrl],
+    queryFn: ttsService.getHealth,
+    refetchInterval: 3000,
+    retry: true,
+    retryDelay: 1000,
+    staleTime: 1000,
+  });
 
-        const loadedVoices: VoiceSample[] = [];
-        for (const backendVoice of response.voices) {
-          const voiceSample = convertToVoiceSample(backendVoice);
+  // Load voices from backend with dependency on health
+  const voicesQuery = useQuery<VoiceSample[]>({
+    queryKey: ['voices', apiBaseUrl],
+    queryFn: async () => {
+      const response: VoiceLibraryResponse = await ttsService.getVoices();
+      const loadedVoices: VoiceSample[] = [];
 
-          // Generate audio URL for preview (download endpoint)
-          try {
-            const audioBlob = await ttsService.downloadVoice(backendVoice.name);
-            voiceSample.audioUrl = URL.createObjectURL(audioBlob);
+      for (const backendVoice of response.voices) {
+        const voiceSample = convertToVoiceSample(backendVoice);
 
-            // Create a File object from the blob for compatibility
-            voiceSample.file = new File([audioBlob], backendVoice.filename, {
-              type: getAudioMimeType(backendVoice.file_extension)
-            });
-          } catch (error) {
-            console.error(`Failed to load audio for voice ${backendVoice.name}:`, error);
-            // Skip this voice if we can't load its audio
-            continue;
-          }
+        // Generate audio URL for preview (download endpoint)
+        try {
+          const audioBlob = await ttsService.downloadVoice(backendVoice.name);
+          voiceSample.audioUrl = URL.createObjectURL(audioBlob);
 
-          loadedVoices.push(voiceSample);
+          // Create a File object from the blob for compatibility
+          voiceSample.file = new File([audioBlob], backendVoice.filename, {
+            type: getAudioMimeType(backendVoice.file_extension)
+          });
+        } catch (error) {
+          console.error(`Failed to load audio for voice ${backendVoice.name}:`, error);
+          // Skip this voice if we can't load its audio
+          continue;
         }
 
-        setVoices(loadedVoices);
-      } catch (error) {
-        console.error('Error loading voice library:', error);
-        setVoices([]); // Fallback to empty array on error
-      } finally {
-        setIsLoading(false);
+        loadedVoices.push(voiceSample);
+      }
+
+      return loadedVoices;
+    },
+    enabled: healthQuery.data?.status === 'healthy' || healthQuery.data?.status === 'initializing',
+    retry: (failureCount, error: any) => {
+      // Retry if the backend is still starting up or if it's a network error
+      if (failureCount < 3) {
+        const isNetworkError = error?.message?.includes('fetch') || error?.message?.includes('Failed to');
+        const isServerError = error?.message?.includes('500') || error?.message?.includes('503');
+        return isNetworkError || isServerError;
+      }
+      return false;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 3000),
+    staleTime: 10000, // Cache for 10 seconds
+    refetchOnWindowFocus: false,
+  });
+
+  const voices = voicesQuery.data || [];
+
+  // Cleanup URLs when voices change
+  useEffect(() => {
+    return () => {
+      if (voicesQuery.data) {
+        voicesQuery.data.forEach((voice: VoiceSample) => {
+          if (voice.audioUrl) {
+            URL.revokeObjectURL(voice.audioUrl);
+          }
+        });
       }
     };
-
-    loadVoices();
-
-    // Cleanup URLs on unmount
-    return () => {
-      voices.forEach(voice => {
-        if (voice.audioUrl) {
-          URL.revokeObjectURL(voice.audioUrl);
-        }
-      });
-    };
-  }, [apiBaseUrl]);
+  }, [voicesQuery.data]);
 
   const addVoice = useCallback(async (file: File, customName?: string): Promise<VoiceSample> => {
     const voiceName = customName || file.name.replace(/\.[^/.]+$/, "");
@@ -86,24 +107,26 @@ export function useVoiceLibrary() {
         name: voiceName,
         file,
         audioUrl,
-        uploadDate: new Date()
+        uploadDate: new Date(),
+        aliases: []
       };
 
-      // Add to local state
-      setVoices(prev => [voice, ...prev]);
+      // Invalidate voices query to refetch the list
+      queryClient.invalidateQueries({ queryKey: ['voices', apiBaseUrl] });
+
       return voice;
     } catch (error) {
       console.error('Error adding voice:', error);
       throw error;
     }
-  }, [ttsService]);
+  }, [ttsService, queryClient, apiBaseUrl]);
 
   const deleteVoice = useCallback(async (voiceId: string) => {
     try {
       // Delete from backend
       await ttsService.deleteVoice(voiceId);
 
-      const voice = voices.find(v => v.id === voiceId);
+      const voice = voices.find((v: VoiceSample) => v.id === voiceId);
       if (voice && voice.audioUrl) {
         // Revoke URL
         URL.revokeObjectURL(voice.audioUrl);
@@ -114,74 +137,75 @@ export function useVoiceLibrary() {
         setSelectedVoice(null);
       }
 
-      // Remove from state
-      setVoices(prev => prev.filter(v => v.id !== voiceId));
+      // Invalidate voices query to refetch the list
+      queryClient.invalidateQueries({ queryKey: ['voices', apiBaseUrl] });
+      // Also invalidate default voice query in case we deleted the default voice
+      queryClient.invalidateQueries({ queryKey: ['default-voice', apiBaseUrl] });
     } catch (error) {
       console.error('Error deleting voice:', error);
       throw error;
     }
-  }, [voices, selectedVoice, ttsService]);
+  }, [voices, selectedVoice, ttsService, queryClient, apiBaseUrl]);
 
   const renameVoice = useCallback(async (voiceId: string, newName: string) => {
     try {
       // Rename in backend
       await ttsService.renameVoice(voiceId, newName);
 
-      // Update local state
-      setVoices(prev => prev.map(voice => {
-        if (voice.id === voiceId) {
-          return { ...voice, id: newName, name: newName };
-        }
-        return voice;
-      }));
-
       // Update selected voice if it was the renamed one
       if (selectedVoice?.id === voiceId) {
         setSelectedVoice(prev => prev ? { ...prev, id: newName, name: newName } : null);
       }
+
+      // Invalidate voices query to refetch the list
+      queryClient.invalidateQueries({ queryKey: ['voices', apiBaseUrl] });
+      // Also invalidate default voice query in case we renamed the default voice
+      queryClient.invalidateQueries({ queryKey: ['default-voice', apiBaseUrl] });
     } catch (error) {
       console.error('Error renaming voice:', error);
       throw error;
     }
-  }, [selectedVoice, ttsService]);
+  }, [selectedVoice, ttsService, queryClient, apiBaseUrl]);
 
   const refreshVoices = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await ttsService.getVoices();
-      const loadedVoices: VoiceSample[] = [];
-
-      // Clean up existing URLs
-      voices.forEach(voice => {
-        if (voice.audioUrl) {
-          URL.revokeObjectURL(voice.audioUrl);
-        }
-      });
-
-      for (const backendVoice of response.voices) {
-        const voiceSample = convertToVoiceSample(backendVoice);
-
-        try {
-          const audioBlob = await ttsService.downloadVoice(backendVoice.name);
-          voiceSample.audioUrl = URL.createObjectURL(audioBlob);
-          voiceSample.file = new File([audioBlob], backendVoice.filename, {
-            type: getAudioMimeType(backendVoice.file_extension)
-          });
-        } catch (error) {
-          console.error(`Failed to load audio for voice ${backendVoice.name}:`, error);
-          continue;
-        }
-
-        loadedVoices.push(voiceSample);
+    // Clean up existing URLs
+    voices.forEach((voice: VoiceSample) => {
+      if (voice.audioUrl) {
+        URL.revokeObjectURL(voice.audioUrl);
       }
+    });
 
-      setVoices(loadedVoices);
+    // Refetch voices
+    await voicesQuery.refetch();
+  }, [voicesQuery, voices]);
+
+  const addAlias = useCallback(async (voiceName: string, alias: string) => {
+    try {
+      await ttsService.addAlias(voiceName, alias);
+
+      // Invalidate voices query to refetch the list
+      queryClient.invalidateQueries({ queryKey: ['voices', apiBaseUrl] });
+
+      return true;
     } catch (error) {
-      console.error('Error refreshing voices:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Error adding alias:', error);
+      throw error;
     }
-  }, [ttsService, voices]);
+  }, [ttsService, queryClient, apiBaseUrl]);
+
+  const removeAlias = useCallback(async (voiceName: string, alias: string) => {
+    try {
+      await ttsService.removeAlias(voiceName, alias);
+
+      // Invalidate voices query to refetch the list
+      queryClient.invalidateQueries({ queryKey: ['voices', apiBaseUrl] });
+
+      return true;
+    } catch (error) {
+      console.error('Error removing alias:', error);
+      throw error;
+    }
+  }, [ttsService, queryClient, apiBaseUrl]);
 
   return {
     voices,
@@ -191,7 +215,12 @@ export function useVoiceLibrary() {
     deleteVoice,
     renameVoice,
     refreshVoices,
-    isLoading
+    addAlias,
+    removeAlias,
+    isLoading: voicesQuery.isLoading || healthQuery.isLoading,
+    isBackendReady: healthQuery.data?.status === 'healthy' || healthQuery.data?.status === 'initializing',
+    healthStatus: healthQuery.data?.status,
+    error: voicesQuery.error
   };
 }
 
