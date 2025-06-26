@@ -37,6 +37,16 @@
 
 ## ⚡️ Quick Start
 
+```bash
+git clone https://github.com/travisvn/chatterbox-tts-api
+cd chatterbox-tts-api
+uv sync
+uv run main.py
+```
+
+> [!TIP]
+> [uv](https://docs.astral.sh/uv/) installed with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
 ### Local Installation with Python 🐍
 
 #### Option A: Using uv (Recommended - Faster & Better Dependencies)
@@ -945,5 +955,4 @@ To use Chatterbox TTS API with Open WebUI, follow these steps:
 </p>
 
 
-> 💡 _More integration examples coming soon_
-
+### ➡️ View the [Open WebUI docs for installing Chatterbox TTS API](https://docs.openwebui.com/tutorials/text-to-speech/chatterbox-tts-api-integration) 
