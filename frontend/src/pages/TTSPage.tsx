@@ -13,6 +13,7 @@ import AudioHistory from '../components/AudioHistory';
 import StatusHeader from '../components/StatusHeader';
 import StatusProgressOverlay from '../components/StatusProgressOverlay';
 import StatusStatisticsPanel from '../components/StatusStatisticsPanel';
+import StreamingProgressComponent from '../components/tts/StreamingProgress';
 import { createTTSService } from '../services/tts';
 import { useApiEndpoint } from '../hooks/useApiEndpoint';
 import { useVoiceLibrary } from '../hooks/useVoiceLibrary';
@@ -22,6 +23,7 @@ import { useTextInput } from '../hooks/useTextInput';
 import { useStatusMonitoring } from '../hooks/useStatusMonitoring';
 import { useProgressSettings } from '../hooks/useProgressSettings';
 import { useDefaultVoice } from '../hooks/useDefaultVoice';
+import { useStreamingTTS } from '../hooks/useStreamingTTS';
 import type { TTSRequest } from '../types';
 
 export default function TTSPage() {
@@ -46,6 +48,34 @@ export default function TTSPage() {
     resetToDefaults,
     isDefault
   } = useAdvancedSettings();
+
+  // Progress settings and session tracking
+  const {
+    settings: progressSettings,
+    updateSettings: updateProgressSettings,
+    trackRequest,
+    shouldShowProgress,
+    dismissProgress,
+    sessionId
+  } = useProgressSettings();
+
+  // Streaming TTS management
+  const {
+    isStreaming,
+    progress: streamingProgress,
+    audioUrl: streamingAudioUrl,
+    error: streamingError,
+    isStreamingEnabled,
+    toggleStreaming,
+    streamingFormat,
+    setStreamingFormat,
+    startStreaming,
+    stopStreaming,
+    clearAudio: clearStreamingAudio
+  } = useStreamingTTS({
+    apiBaseUrl,
+    sessionId
+  });
 
   // Voice library management with backend health monitoring
   const {
@@ -72,16 +102,6 @@ export default function TTSPage() {
     clearHistory,
     isLoading: historyLoading
   } = useAudioHistory();
-
-  // Progress settings and session tracking
-  const {
-    settings: progressSettings,
-    updateSettings: updateProgressSettings,
-    trackRequest,
-    shouldShowProgress,
-    dismissProgress,
-    sessionId
-  } = useProgressSettings();
 
   // Default voice management with backend health monitoring
   const {
@@ -125,6 +145,7 @@ export default function TTSPage() {
     retry: false
   });
 
+  // Standard (non-streaming) generation mutation
   const generateMutation = useMutation({
     mutationFn: ttsService.generateSpeech,
     onMutate: (variables) => {
@@ -166,18 +187,19 @@ export default function TTSPage() {
     }
   });
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!text.trim()) {
       alert('Please enter some text to convert to speech.');
       return;
     }
 
-    // For backend voices, use the voice name; for file uploads, use voice_file
+    // Prepare request data
     const requestData: TTSRequest = {
       input: text,
       exaggeration,
       cfg_weight: cfgWeight,
-      temperature
+      temperature,
+      session_id: sessionId
     };
 
     if (selectedVoice) {
@@ -190,12 +212,54 @@ export default function TTSPage() {
       }
     }
 
-    generateMutation.mutate(requestData);
+    // Track this request
+    trackRequest(sessionId);
+
+    if (isStreamingEnabled) {
+      // Use streaming
+      try {
+        await startStreaming(requestData);
+
+        // If streaming completes successfully and we have a final audio URL, save to history
+        if (streamingAudioUrl) {
+          try {
+            const response = await fetch(streamingAudioUrl);
+            const audioBlob = await response.blob();
+
+            await addAudioRecord(
+              audioBlob,
+              {
+                text,
+                exaggeration,
+                cfgWeight,
+                temperature,
+                voiceId: selectedVoice?.id,
+                voiceName: selectedVoice?.name
+              }
+            );
+          } catch (error) {
+            console.error('Failed to save streaming audio to history:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Streaming failed:', error);
+        alert('Failed to stream speech. Please try again.');
+      }
+    } else {
+      // Use standard generation
+      generateMutation.mutate(requestData);
+    }
   };
 
   // Determine if backend is ready for voice operations
   const isBackendReady = voicesBackendReady && defaultVoiceBackendReady;
   const isInitializing = healthStatus === 'initializing' || health?.status === 'initializing';
+
+  // Determine if generation is in progress (streaming or standard)
+  const isGenerating = generateMutation.isPending || isStreaming;
+
+  // Use streaming audio URL if available, otherwise use standard audio URL
+  const currentAudioUrl = streamingAudioUrl || audioUrl;
 
   return (
     <>
@@ -281,7 +345,21 @@ export default function TTSPage() {
               onChange={updateText}
               onClear={clearText}
               hasText={hasText}
+              isStreamingEnabled={isStreamingEnabled}
+              onToggleStreaming={toggleStreaming}
             />
+
+            {/* Streaming Progress */}
+            {(isStreaming || streamingProgress || streamingAudioUrl || streamingError) && (
+              <StreamingProgressComponent
+                isStreaming={isStreaming}
+                progress={streamingProgress}
+                audioUrl={streamingAudioUrl}
+                error={streamingError}
+                onStop={stopStreaming}
+                onClear={clearStreamingAudio}
+              />
+            )}
 
             {/* Voice Library */}
             <VoiceLibrary
@@ -344,16 +422,16 @@ export default function TTSPage() {
             {/* Generate Button */}
             <Button
               onClick={handleGenerate}
-              disabled={generateMutation.isPending || !hasText}
+              disabled={isGenerating || !hasText}
               className="w-full py-6 px-6 text-xl [&_svg]:size-6 [&_svg:not([class*='size-'])]:size-6 flex gap-4"
             >
               <Volume2 className="w-5 h-5 mr-2" />
-              {generateMutation.isPending ? 'Generating...' : 'Generate Speech'}
+              {isGenerating ? (isStreaming ? 'Streaming...' : 'Generating...') : 'Generate Speech'}
             </Button>
 
-            {/* Audio Player */}
-            {audioUrl && (
-              <AudioPlayer audioUrl={audioUrl} />
+            {/* Audio Player - Only show for non-streaming audio or completed streaming */}
+            {currentAudioUrl && !isStreaming && (
+              <AudioPlayer audioUrl={currentAudioUrl} />
             )}
           </div>
         </div>

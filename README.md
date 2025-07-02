@@ -274,16 +274,26 @@ curl http://localhost:4123/v1/voices
 
 ## 🎵 Real-time Audio Streaming
 
-The API supports real-time audio streaming for lower latency and better user experience. Audio chunks are generated and sent as they're ready, allowing you to start playing audio before complete generation.
+The API supports multiple streaming formats for lower latency and better user experience:
+
+- **Raw Audio Streaming**: Traditional audio chunks (WAV format)
+- **Server-Side Events (SSE)**: OpenAI-compatible format with base64-encoded audio chunks
 
 ### Quick Start
 
 ```bash
-# Basic streaming
+# Basic audio streaming
 curl -X POST http://localhost:4123/v1/audio/speech/stream \
   -H "Content-Type: application/json" \
   -d '{"input": "This streams in real-time!"}' \
   --output streaming.wav
+
+# SSE streaming (OpenAI compatible)
+curl -X POST http://localhost:4123/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"input": "This streams as Server-Side Events!", "stream_format": "sse"}' \
+  --no-buffer
 
 # Real-time playback
 curl -X POST http://localhost:4123/v1/audio/speech/stream \
@@ -389,6 +399,50 @@ with open("streaming_output.wav", "wb") as f:
         if chunk:
             f.write(chunk)
             print(f"Received chunk: {len(chunk)} bytes")
+```
+
+### SSE Streaming Example (OpenAI Compatible)
+
+```python
+import requests
+import json
+import base64
+
+# Stream audio using Server-Side Events format
+response = requests.post(
+    "http://localhost:4123/v1/audio/speech",
+    json={
+        "input": "This streams as Server-Side Events!",
+        "stream_format": "sse",
+        "exaggeration": 0.8
+    },
+    stream=True,
+    headers={'Accept': 'text/event-stream'}
+)
+
+audio_chunks = []
+
+for line in response.iter_lines(decode_unicode=True):
+    if line.startswith('data: '):
+        event_data = line[6:]  # Remove 'data: ' prefix
+
+        try:
+            event = json.loads(event_data)
+
+            if event.get('type') == 'speech.audio.delta':
+                # Decode base64 audio chunk
+                audio_data = base64.b64decode(event['audio'])
+                audio_chunks.append(audio_data)
+                print(f"Received audio chunk: {len(audio_data)} bytes")
+
+            elif event.get('type') == 'speech.audio.done':
+                usage = event.get('usage', {})
+                print(f"Complete! Tokens: {usage.get('total_tokens', 0)}")
+                break
+        except:
+            continue
+
+print(f"Received {len(audio_chunks)} audio chunks")
 ```
 
 **📚 [Complete Streaming Examples & Documentation →](docs/STREAMING_API.md)**
@@ -537,6 +591,11 @@ docker compose -f docker/docker-compose.gpu.yml up -d
 - `0.4-0.6`: More consistent
 - `0.8`: Default balance
 - `1.0+`: More creative/random
+
+**Stream Format**
+
+- `audio`: Raw audio streaming (default)
+- `sse`: Server-Side Events with base64-encoded audio chunks (OpenAI compatible)
 
 </details>
 
@@ -931,7 +990,7 @@ curl http://localhost:4123/openapi.json
 
 ---
 
-## 🔗 Integrations 
+## 🔗 Integrations
 
 ### Open WebUI
 
@@ -948,11 +1007,9 @@ To use Chatterbox TTS API with Open WebUI, follow these steps:
   - TTS Model: `tts-1` or `tts-1-hd`
   - TTS Voice: _Name of the voice you've cloned_ (can also include aliases, defined in the frontend)
   - Response splitting: `Paragraphs`
- 
 
 <p align="center">
   <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUjUe3QjHytHQ0xqn2CishmXgGfeJ4o983TUMO" alt="Settings to integrate Chatterbox TTS API with Open WebUI" />
 </p>
 
-
-### ➡️ View the [Open WebUI docs for installing Chatterbox TTS API](https://docs.openwebui.com/tutorials/text-to-speech/chatterbox-tts-api-integration) 
+### ➡️ View the [Open WebUI docs for installing Chatterbox TTS API](https://docs.openwebui.com/tutorials/text-to-speech/chatterbox-tts-api-integration)

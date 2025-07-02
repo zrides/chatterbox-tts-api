@@ -6,6 +6,10 @@ export interface TTSRequest {
   temperature?: number;
   voice_file?: File;
   session_id?: string;
+  stream_format?: 'audio' | 'sse';
+  streaming_chunk_size?: number;
+  streaming_strategy?: 'sentence' | 'paragraph' | 'fixed' | 'word';
+  streaming_quality?: 'fast' | 'balanced' | 'high';
 }
 
 export interface HealthResponse {
@@ -157,4 +161,30 @@ export interface DefaultVoiceResponse {
   source: 'voice_library' | 'file_system';
   voice_info?: VoiceLibraryItem;
   path?: string;
+}
+
+// Streaming-related types
+export interface SSEAudioDelta {
+  type: 'speech.audio.delta';
+  audio: string; // Base64 encoded audio chunk
+}
+
+export interface SSEAudioDone {
+  type: 'speech.audio.done';
+  usage: {
+    input_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+  };
+}
+
+export type SSEEvent = SSEAudioDelta | SSEAudioDone;
+
+export interface StreamingProgress {
+  chunksReceived: number;
+  totalBytes: number;
+  isComplete: boolean;
+  audioChunks: Blob[];
+  currentChunk?: number;
+  totalChunks?: number;
 } 

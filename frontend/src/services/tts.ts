@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { TTSRequest, HealthResponse, VoiceLibraryResponse, DefaultVoiceResponse, VoiceLibraryItem } from '../types';
+import type { TTSRequest, HealthResponse, VoiceLibraryResponse, DefaultVoiceResponse, VoiceLibraryItem, SSEEvent, StreamingProgress } from '../types';
 
 export const createTTSService = (baseUrl: string, sessionId?: string) => ({
   generateSpeech: async (request: TTSRequest): Promise<Blob> => {
@@ -50,6 +50,179 @@ export const createTTSService = (baseUrl: string, sessionId?: string) => ({
       headers: { 'Content-Type': 'application/json' }
     });
     return response.data;
+  },
+
+  // SSE Streaming method
+  generateSpeechSSE: async function* (request: TTSRequest): AsyncGenerator<{ event: SSEEvent; progress: StreamingProgress }> {
+    const requestData = {
+      ...request,
+      stream_format: 'sse' as const
+    };
+
+    const response = await fetch(`${baseUrl}/audio/speech`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
+      },
+      body: JSON.stringify(requestData)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`SSE streaming failed: ${response.status} ${errorText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('Response body is null');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    const progress: StreamingProgress = {
+      chunksReceived: 0,
+      totalBytes: 0,
+      isComplete: false,
+      audioChunks: []
+    };
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          progress.isComplete = true;
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const eventData = line.slice(6);
+
+            try {
+              const event: SSEEvent = JSON.parse(eventData);
+
+              if (event.type === 'speech.audio.delta') {
+                // Decode base64 audio chunk
+                const audioData = atob(event.audio);
+                const bytes = new Uint8Array(audioData.length);
+                for (let i = 0; i < audioData.length; i++) {
+                  bytes[i] = audioData.charCodeAt(i);
+                }
+                const chunk = new Blob([bytes], { type: 'audio/wav' });
+
+                progress.audioChunks.push(chunk);
+                progress.chunksReceived++;
+                progress.totalBytes += chunk.size;
+              }
+
+              yield { event, progress: { ...progress } };
+
+              if (event.type === 'speech.audio.done') {
+                progress.isComplete = true;
+                return;
+              }
+            } catch (e) {
+              console.warn('Failed to parse SSE event:', eventData);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
+
+  // Raw audio streaming method
+  generateSpeechStream: async function* (request: TTSRequest): AsyncGenerator<{ chunk: Blob; progress: StreamingProgress }> {
+    const formData = new FormData();
+    formData.append('input', request.input);
+
+    if (request.voice) {
+      formData.append('voice', request.voice);
+    }
+
+    if (request.exaggeration !== undefined) {
+      formData.append('exaggeration', request.exaggeration.toString());
+    }
+
+    if (request.cfg_weight !== undefined) {
+      formData.append('cfg_weight', request.cfg_weight.toString());
+    }
+
+    if (request.temperature !== undefined) {
+      formData.append('temperature', request.temperature.toString());
+    }
+
+    if (request.voice_file) {
+      formData.append('voice_file', request.voice_file);
+    }
+
+    if (request.streaming_chunk_size !== undefined) {
+      formData.append('streaming_chunk_size', request.streaming_chunk_size.toString());
+    }
+
+    if (request.streaming_strategy) {
+      formData.append('streaming_strategy', request.streaming_strategy);
+    }
+
+    if (request.streaming_quality) {
+      formData.append('streaming_quality', request.streaming_quality);
+    }
+
+    // Add session ID for tracking
+    if (sessionId) {
+      formData.append('session_id', sessionId);
+    }
+
+    const response = await fetch(`${baseUrl}/audio/speech/stream/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Audio streaming failed: ${response.status} ${errorText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('Response body is null');
+    }
+
+    const reader = response.body.getReader();
+
+    const progress: StreamingProgress = {
+      chunksReceived: 0,
+      totalBytes: 0,
+      isComplete: false,
+      audioChunks: []
+    };
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          progress.isComplete = true;
+          break;
+        }
+
+        const chunk = new Blob([value], { type: 'audio/wav' });
+        progress.audioChunks.push(chunk);
+        progress.chunksReceived++;
+        progress.totalBytes += chunk.size;
+
+        yield { chunk, progress: { ...progress } };
+      }
+    } finally {
+      reader.releaseLock();
+    }
   },
 
   getHealth: async (): Promise<HealthResponse> => {

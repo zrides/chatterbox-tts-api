@@ -34,6 +34,37 @@ Generate and stream speech audio in real-time using the configured voice sample.
 }
 ```
 
+### Server-Side Events (SSE) Streaming
+
+**POST** `/audio/speech`
+
+Generate speech using Server-Side Events format (OpenAI compatible) by setting `stream_format` to `"sse"`.
+
+**Request Body (JSON):**
+
+```json
+{
+  "input": "Text to convert to speech",
+  "stream_format": "sse",
+  "exaggeration": 0.7,
+  "cfg_weight": 0.4,
+  "temperature": 0.9,
+  "streaming_chunk_size": 200,
+  "streaming_strategy": "sentence"
+}
+```
+
+**Response Format:**
+Returns `text/event-stream` with JSON events:
+
+```
+data: {"type": "speech.audio.delta", "audio": "base64_encoded_audio_chunk"}
+
+data: {"type": "speech.audio.delta", "audio": "base64_encoded_audio_chunk"}
+
+data: {"type": "speech.audio.done", "usage": {"input_tokens": 10, "output_tokens": 150, "total_tokens": 160}}
+```
+
 ### Streaming with Voice Upload
 
 **POST** `/audio/speech/stream/upload`
@@ -184,6 +215,16 @@ curl -X POST http://localhost:4123/v1/audio/speech/stream \
   --output streaming.wav
 ```
 
+**SSE Streaming (OpenAI Compatible):**
+
+```bash
+curl -X POST http://localhost:4123/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"input": "This streams as Server-Side Events!", "stream_format": "sse"}' \
+  --no-buffer
+```
+
 **Advanced Streaming with Custom Settings:**
 
 ```bash
@@ -230,6 +271,56 @@ with open("streaming_output.wav", "wb") as f:
         if chunk:
             f.write(chunk)
             print(f"Received chunk: {len(chunk)} bytes")
+```
+
+#### SSE Streaming (OpenAI Compatible)
+
+```python
+import requests
+import json
+import base64
+
+response = requests.post(
+    "http://localhost:4123/v1/audio/speech",
+    json={
+        "input": "This streams as Server-Side Events!",
+        "stream_format": "sse",
+        "streaming_strategy": "sentence"
+    },
+    stream=True,
+    headers={'Accept': 'text/event-stream'}
+)
+
+audio_chunks = []
+
+for line in response.iter_lines(decode_unicode=True):
+    if line.startswith('data: '):
+        event_data = line[6:]  # Remove 'data: ' prefix
+
+        try:
+            event = json.loads(event_data)
+
+            if event.get('type') == 'speech.audio.delta':
+                # Decode base64 audio chunk
+                audio_data = base64.b64decode(event['audio'])
+                audio_chunks.append(audio_data)
+                print(f"Received audio chunk: {len(audio_data)} bytes")
+
+            elif event.get('type') == 'speech.audio.done':
+                # Streaming complete
+                usage = event.get('usage', {})
+                print(f"Streaming complete. Usage: {usage}")
+                break
+
+        except json.JSONDecodeError:
+            continue
+
+# Save combined audio (raw PCM data)
+with open("sse_output.raw", "wb") as f:
+    for chunk in audio_chunks:
+        f.write(chunk)
+
+print(f"Saved {len(audio_chunks)} audio chunks")
 ```
 
 #### Advanced Streaming with Progress

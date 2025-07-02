@@ -3,7 +3,7 @@
  */
 
 // This will be set at build time by Vite
-export const FRONTEND_VERSION = '1.2.0'; // Fallback version
+export const FRONTEND_VERSION = '1.3.0'; // Fallback version
 
 /**
  * Get the frontend version

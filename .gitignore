@@ -97,3 +97,5 @@ voices/
 
 coverage.xml
 test_*
+
+!tests/test_*

@@ -13,6 +13,7 @@ class TTSRequest(BaseModel):
     voice: Optional[str] = Field("alloy", description="Voice to use (ignored - uses voice sample)")
     response_format: Optional[str] = Field("wav", description="Audio format (always returns WAV)")
     speed: Optional[float] = Field(1.0, description="Speed of speech (ignored)")
+    stream_format: Optional[str] = Field("audio", description="Streaming format: 'audio' for raw audio stream, 'sse' for Server-Side Events")
     
     # Custom TTS parameters
     exaggeration: Optional[float] = Field(None, description="Emotion intensity", ge=0.25, le=2.0)
@@ -30,6 +31,14 @@ class TTSRequest(BaseModel):
         if not v or not v.strip():
             raise ValueError('Input text cannot be empty')
         return v.strip()
+    
+    @validator('stream_format')
+    def validate_stream_format(cls, v):
+        if v is not None:
+            allowed_formats = ['audio', 'sse']
+            if v not in allowed_formats:
+                raise ValueError(f'stream_format must be one of: {", ".join(allowed_formats)}')
+        return v
     
     @validator('streaming_strategy')
     def validate_streaming_strategy(cls, v):

@@ -5,6 +5,19 @@ All notable changes to the Chatterbox TTS API project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-07-02
+
+### Added
+
+- **SSE Streaming**: Introduction of Server-Side Events (SSE) streaming functionality for real-time audio generation that more closely aligns with the OpenAI Speech API endpoint
+- **Frontend Streaming**: New frontend functionality to opt to stream the audio (while also being able to download the full audio at the end of the stream)
+
+### Updated
+
+- Python tests for the SSE events and for the frontend streaming
+
+---
+
 ## [1.5.0] - 2025-06-23
 
 ### Added

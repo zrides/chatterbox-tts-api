@@ -51,6 +51,29 @@ class ErrorResponse(BaseModel):
     error: Dict[str, str]
 
 
+# SSE Response Models for OpenAI compatibility
+class SSEUsageInfo(BaseModel):
+    """Usage information for SSE completion event"""
+    
+    input_tokens: int
+    output_tokens: int  
+    total_tokens: int
+
+
+class SSEAudioDelta(BaseModel):
+    """SSE audio delta event model"""
+    
+    type: str = "speech.audio.delta"
+    audio: str  # Base64 encoded audio chunk
+
+
+class SSEAudioDone(BaseModel):
+    """SSE audio completion event model"""
+    
+    type: str = "speech.audio.done"
+    usage: SSEUsageInfo
+
+
 class TTSProgressResponse(BaseModel):
     """TTS progress response model"""
     
