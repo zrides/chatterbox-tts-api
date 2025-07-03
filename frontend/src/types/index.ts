@@ -163,7 +163,19 @@ export interface DefaultVoiceResponse {
   path?: string;
 }
 
-// Streaming-related types
+export interface AudioInfo {
+  sample_rate: number;
+  channels: number;
+  bits_per_sample: number;
+}
+
+export interface SSEAudioInfo {
+  type: 'speech.audio.info';
+  sample_rate: number;
+  channels: number;
+  bits_per_sample: number;
+}
+
 export interface SSEAudioDelta {
   type: 'speech.audio.delta';
   audio: string; // Base64 encoded audio chunk
@@ -178,7 +190,7 @@ export interface SSEAudioDone {
   };
 }
 
-export type SSEEvent = SSEAudioDelta | SSEAudioDone;
+export type SSEEvent = SSEAudioInfo | SSEAudioDelta | SSEAudioDone;
 
 export interface StreamingProgress {
   chunksReceived: number;

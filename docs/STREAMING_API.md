@@ -266,6 +266,8 @@ response = requests.post(
     stream=True
 )
 
+# The response is a single, continuous WAV stream.
+# You can write it directly to a file.
 with open("streaming_output.wav", "wb") as f:
     for chunk in response.iter_content(chunk_size=8192):
         if chunk:
@@ -279,35 +281,57 @@ with open("streaming_output.wav", "wb") as f:
 import requests
 import json
 import base64
+import wave
+import io
+
+def create_wav_from_pcm(pcm_data, sample_rate, channels, bits_per_sample):
+    """Creates a WAV file in memory from raw PCM data."""
+    wav_file = io.BytesIO()
+    with wave.open(wav_file, 'wb') as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(bits_per_sample // 8)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data)
+    wav_file.seek(0)
+    return wav_file.getvalue()
 
 response = requests.post(
     "http://localhost:4123/v1/audio/speech",
     json={
-        "input": "This streams as Server-Side Events!",
-        "stream_format": "sse",
-        "streaming_strategy": "sentence"
+        "input": "This streams as Server-Side Events with raw audio!",
+        "stream_format": "sse"
     },
     stream=True,
     headers={'Accept': 'text/event-stream'}
 )
 
 audio_chunks = []
+audio_info = {}
 
 for line in response.iter_lines(decode_unicode=True):
     if line.startswith('data: '):
-        event_data = line[6:]  # Remove 'data: ' prefix
+        event_data = line[6:]
 
         try:
             event = json.loads(event_data)
 
-            if event.get('type') == 'speech.audio.delta':
-                # Decode base64 audio chunk
+            # First event contains audio metadata
+            if event.get('type') == 'speech.audio.info':
+                audio_info = {
+                    "sample_rate": event['sample_rate'],
+                    "channels": event['channels'],
+                    "bits_per_sample": event['bits_per_sample']
+                }
+                print(f"Received audio info: {audio_info}")
+
+            # Subsequent events contain raw audio data
+            elif event.get('type') == 'speech.audio.delta':
                 audio_data = base64.b64decode(event['audio'])
                 audio_chunks.append(audio_data)
                 print(f"Received audio chunk: {len(audio_data)} bytes")
 
+            # Final event indicates completion
             elif event.get('type') == 'speech.audio.done':
-                # Streaming complete
                 usage = event.get('usage', {})
                 print(f"Streaming complete. Usage: {usage}")
                 break
@@ -315,97 +339,36 @@ for line in response.iter_lines(decode_unicode=True):
         except json.JSONDecodeError:
             continue
 
-# Save combined audio (raw PCM data)
-with open("sse_output.raw", "wb") as f:
-    for chunk in audio_chunks:
-        f.write(chunk)
+# Combine raw PCM data and create a valid WAV file
+if audio_chunks and audio_info:
+    combined_pcm_data = b"".join(audio_chunks)
 
-print(f"Saved {len(audio_chunks)} audio chunks")
-```
-
-#### Advanced Streaming with Progress
-
-```python
-import requests
-import threading
-import time
-
-def stream_with_progress(text, **params):
-    """Stream TTS with real-time progress monitoring"""
-
-    # Start streaming request
-    response = requests.post(
-        "http://localhost:4123/v1/audio/speech/stream",
-        json={"input": text, **params},
-        stream=True
+    wav_data = create_wav_from_pcm(
+        combined_pcm_data,
+        sample_rate=audio_info['sample_rate'],
+        channels=audio_info['channels'],
+        bits_per_sample=audio_info['bits_per_sample']
     )
 
-    # Monitor progress in separate thread
-    def monitor_progress():
-        while True:
-            try:
-                progress = requests.get("http://localhost:4123/v1/status/progress").json()
-                if progress.get("is_processing"):
-                    print(f"Progress: {progress.get('progress_percentage', 0):.1f}%")
-                    print(f"Step: {progress.get('current_step', '')}")
-                else:
-                    break
-                time.sleep(0.5)
-            except:
-                break
-
-    progress_thread = threading.Thread(target=monitor_progress)
-    progress_thread.start()
-
-    # Stream audio
-    with open("streaming_output.wav", "wb") as f:
-        total_bytes = 0
-        for chunk in response.iter_content(chunk_size=4096):
-            if chunk:
-                f.write(chunk)
-                total_bytes += len(chunk)
-                print(f"Streamed {total_bytes:,} bytes")
-
-    progress_thread.join()
-    print("Streaming complete!")
-
-# Usage
-stream_with_progress(
-    "This is a long text that demonstrates streaming with progress monitoring.",
-    streaming_strategy="sentence",
-    streaming_chunk_size=180,
-    streaming_quality="balanced"
-)
+    with open("sse_output.wav", "wb") as f:
+        f.write(wav_data)
+    print(f"Saved {len(audio_chunks)} audio chunks to sse_output.wav")
+else:
+    print("No audio data was received.")
 ```
 
-#### Real-time Playback with pyaudio
+#### Real-time Playback with sounddevice
 
 ```python
 import requests
-import pyaudio
+import sounddevice as sd
 import wave
 import io
-import threading
 
 def stream_and_play_realtime(text, **params):
-    """Stream TTS and play audio in real-time using pyaudio"""
+    """Stream TTS and play audio in real-time using sounddevice"""
 
-    # Audio settings
-    CHUNK = 1024
-    FORMAT = pyaudio.paInt16
-    CHANNELS = 1
-    RATE = 22050  # Adjust based on your TTS model
-
-    # Initialize PyAudio
-    p = pyaudio.PyAudio()
-    stream = p.open(
-        format=FORMAT,
-        channels=CHANNELS,
-        rate=RATE,
-        output=True,
-        frames_per_buffer=CHUNK
-    )
-
+    print("Requesting audio stream...")
     # Start streaming request
     response = requests.post(
         "http://localhost:4123/v1/audio/speech/stream",
@@ -413,36 +376,69 @@ def stream_and_play_realtime(text, **params):
         stream=True
     )
 
-    # Buffer for WAV processing
-    audio_buffer = io.BytesIO()
-    header_processed = False
+    if response.status_code != 200:
+        print(f"Error from server: {response.status_code}")
+        print(response.text)
+        return
 
+    # The first part of the stream is the WAV header.
+    # We can read it to determine the audio format.
     try:
-        for chunk in response.iter_content(chunk_size=4096):
-            if chunk:
-                audio_buffer.write(chunk)
+        header = response.raw.read(44)
+    except Exception as e:
+        print(f"Failed to read header from stream: {e}")
+        return
 
-                # Skip WAV header for first chunk
-                if not header_processed:
-                    audio_buffer.seek(44)  # Skip WAV header
-                    header_processed = True
+    # Use the header to get audio properties
+    try:
+        with wave.open(io.BytesIO(header)) as wf:
+            channels = wf.getnchannels()
+            samplerate = wf.getframerate()
+            sampwidth = wf.getsampwidth()
 
-                # Read and play audio data
-                audio_buffer.seek(-len(chunk), 1)
-                audio_data = audio_buffer.read()
-                if len(audio_data) >= CHUNK:
-                    stream.write(audio_data[:CHUNK])
+            # Map sample width to numpy dtype
+            if sampwidth == 2:
+                dtype = 'int16'
+            elif sampwidth == 1:
+                dtype = 'int8'
+            elif sampwidth == 3: # 24-bit
+                dtype = 'int24'
+            elif sampwidth == 4:
+                dtype = 'int32'
+            else:
+                raise ValueError(f"Unsupported sample width: {sampwidth}")
 
-    finally:
-        stream.stop_stream()
-        stream.close()
-        p.terminate()
+            print(f"Audio stream info: {samplerate}Hz, {channels}ch, {dtype}")
+    except Exception as e:
+        print(f"Failed to parse WAV header: {e}")
+        return
+
+    # Create and start the output stream
+    try:
+        with sd.RawOutputStream(
+            samplerate=samplerate,
+            channels=channels,
+            dtype=dtype
+        ) as stream:
+            print("Playback started... press Ctrl+C to stop.")
+            # Read the rest of the stream (raw PCM data) and play it
+            while True:
+                chunk = response.raw.read(1024)
+                if not chunk:
+                    break
+                stream.write(chunk)
+            print("Playback finished.")
+    except Exception as e:
+        print(f"An error occurred during playback: {e}")
+    except KeyboardInterrupt:
+        print("\nPlayback stopped by user.")
+
 
 # Usage
+# Note: You may need to install sounddevice: pip install sounddevice
 stream_and_play_realtime(
-    "This plays in real-time as it streams!",
-    streaming_quality="fast",
-    streaming_strategy="word"
+    "This plays in real-time as it streams using the sounddevice library!",
+    streaming_quality="fast"
 )
 ```
 
@@ -492,44 +488,59 @@ async function streamTTS(text: string, options: any = {}) {
 
 ```typescript
 async function streamAndPlayTTS(text: string) {
-  const audioContext = new AudioContext();
-  const response = await fetch('/v1/audio/speech/stream', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      input: text,
-      streaming_quality: 'fast',
-    }),
-  });
+  const audio = new Audio();
+  const mediaSource = new MediaSource();
+  audio.src = URL.createObjectURL(mediaSource);
+  audio.play().catch((e) => console.error('Autoplay was prevented:', e));
 
-  const reader = response.body?.getReader();
-  let audioBuffer = new Uint8Array();
+  mediaSource.addEventListener(
+    'sourceopen',
+    async () => {
+      // The MIME type for WAV audio is 'audio/wav'. For MSE, specifying codecs
+      // can be helpful, e.g., 'audio/wav; codecs=1' for PCM.
+      const sourceBuffer = mediaSource.addSourceBuffer('audio/wav');
 
-  while (true) {
-    const { done, value } = await reader!.read();
-    if (done) break;
-
-    // Append new chunk
-    const newBuffer = new Uint8Array(audioBuffer.length + value.length);
-    newBuffer.set(audioBuffer);
-    newBuffer.set(value, audioBuffer.length);
-    audioBuffer = newBuffer;
-
-    // Try to decode and play if we have enough data
-    if (audioBuffer.length > 8192) {
       try {
-        const audioData = await audioContext.decodeAudioData(
-          audioBuffer.buffer.slice()
-        );
-        const source = audioContext.createBufferSource();
-        source.buffer = audioData;
-        source.connect(audioContext.destination);
-        source.start();
+        const response = await fetch('/v1/audio/speech/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            input: text,
+            streaming_quality: 'fast',
+          }),
+        });
+
+        const reader = response.body!.getReader();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            // Ensure all buffered data is processed before ending the stream
+            if (!sourceBuffer.updating && mediaSource.readyState === 'open') {
+              mediaSource.endOfStream();
+            }
+            break;
+          }
+
+          // Wait for previous append to finish
+          if (sourceBuffer.updating) {
+            await new Promise((resolve) =>
+              sourceBuffer.addEventListener('updateend', resolve, {
+                once: true,
+              })
+            );
+          }
+          sourceBuffer.appendBuffer(value);
+        }
       } catch (e) {
-        // Not enough data yet, continue streaming
+        console.error('Streaming failed:', e);
+        if (mediaSource.readyState === 'open' && !sourceBuffer.updating) {
+          mediaSource.endOfStream();
+        }
       }
-    }
-  }
+    },
+    { once: true }
+  );
 }
 ```
 

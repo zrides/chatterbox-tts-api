@@ -2,13 +2,14 @@ import React from 'react';
 import { Zap, Download, X, Pause, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import type { StreamingProgress } from '../../types';
+import type { StreamingProgress, AudioInfo } from '../../types';
 
 interface StreamingProgressProps {
   isStreaming: boolean;
   progress: StreamingProgress | null;
   audioUrl: string | null;
   error: string | null;
+  audioInfo: AudioInfo | null;
   onStop?: () => void;
   onClear?: () => void;
 }
@@ -18,6 +19,7 @@ export default function StreamingProgressComponent({
   progress,
   audioUrl,
   error,
+  audioInfo,
   onStop,
   onClear
 }: StreamingProgressProps) {
@@ -46,11 +48,18 @@ export default function StreamingProgressComponent({
 
   // Calculate total audio duration estimate
   const getAudioDurationEstimate = () => {
-    if (!progress?.audioChunks || progress.audioChunks.length === 0) return null;
+    if (!progress?.totalBytes) return null;
 
-    const totalBytes = progress.totalBytes;
-    // Rough estimate: WAV at 16kHz, 16-bit = ~32KB per second
-    const estimatedSeconds = totalBytes / (32 * 1024);
+    if (audioInfo) {
+      const { sample_rate, channels, bits_per_sample } = audioInfo;
+      const byteRate = sample_rate * channels * (bits_per_sample / 8);
+      if (byteRate > 0) {
+        return (progress.totalBytes / byteRate).toFixed(1);
+      }
+    }
+
+    // Fallback estimate: WAV at 16kHz, 16-bit = ~32KB per second
+    const estimatedSeconds = progress.totalBytes / (32 * 1024);
     return estimatedSeconds.toFixed(1);
   };
 

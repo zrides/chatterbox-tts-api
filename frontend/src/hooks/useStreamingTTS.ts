@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import type { TTSRequest, StreamingProgress, SSEEvent } from '../types';
+import type { TTSRequest, StreamingProgress, SSEEvent, AudioInfo } from '../types';
 import { createTTSService } from '../services/tts';
 
 interface UseStreamingTTSProps {
@@ -13,6 +13,7 @@ interface StreamingState {
   audioUrl: string | null;
   error: string | null;
   currentAudio: HTMLAudioElement | null;
+  audioInfo: AudioInfo | null;
 }
 
 export function useStreamingTTS({ apiBaseUrl, sessionId }: UseStreamingTTSProps) {
@@ -21,7 +22,8 @@ export function useStreamingTTS({ apiBaseUrl, sessionId }: UseStreamingTTSProps)
     progress: null,
     audioUrl: null,
     error: null,
-    currentAudio: null
+    currentAudio: null,
+    audioInfo: null,
   });
 
   const [isStreamingEnabled, setIsStreamingEnabled] = useState(() => {
@@ -51,97 +53,50 @@ export function useStreamingTTS({ apiBaseUrl, sessionId }: UseStreamingTTSProps)
     }
   }, [isStreamingEnabled]);
 
-  // Properly concatenate WAV files
-  const createFinalAudio = useCallback(async (chunks: Blob[]): Promise<Blob> => {
+  // Properly concatenate raw PCM data into a WAV file
+  const createFinalAudio = useCallback(async (chunks: ArrayBuffer[], audioInfo: AudioInfo): Promise<Blob> => {
     if (chunks.length === 0) return new Blob([], { type: 'audio/wav' });
-    if (chunks.length === 1) return chunks[0];
 
-    try {
-      // For multiple chunks, we need to properly merge the WAV data
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const audioBuffers: AudioBuffer[] = [];
+    const totalLength = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+    const totalSamples = totalLength / (audioInfo.bits_per_sample / 8);
+    const buffer = new ArrayBuffer(44 + totalLength);
+    const view = new DataView(buffer);
 
-      // Decode all chunks to audio buffers
-      for (const chunk of chunks) {
-        try {
-          const arrayBuffer = await chunk.arrayBuffer();
-          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-          audioBuffers.push(audioBuffer);
-        } catch (error) {
-          console.warn('Failed to decode audio chunk, skipping:', error);
-        }
+    // WAV header
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
       }
+    };
 
-      if (audioBuffers.length === 0) {
-        console.warn('No valid audio chunks to concatenate');
-        return new Blob([], { type: 'audio/wav' });
-      }
+    const { sample_rate: sampleRate, channels, bits_per_sample: bitsPerSample } = audioInfo;
 
-      // Calculate total length and create combined buffer
-      const totalLength = audioBuffers.reduce((sum, buffer) => sum + buffer.length, 0);
-      const sampleRate = audioBuffers[0].sampleRate;
-      const numberOfChannels = audioBuffers[0].numberOfChannels;
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + totalLength, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // PCM
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, channels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * channels * (bitsPerSample / 8), true); // ByteRate
+    view.setUint16(32, channels * (bitsPerSample / 8), true); // BlockAlign
+    view.setUint16(34, bitsPerSample, true);
+    writeString(36, 'data');
+    view.setUint32(40, totalLength, true);
 
-      const combinedBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate);
-
-      // Copy all audio data to combined buffer
-      let currentOffset = 0;
-      for (const buffer of audioBuffers) {
-        for (let channel = 0; channel < numberOfChannels; channel++) {
-          const channelData = buffer.getChannelData(channel);
-          combinedBuffer.getChannelData(channel).set(channelData, currentOffset);
-        }
-        currentOffset += buffer.length;
-      }
-
-      // Convert combined buffer back to WAV blob
-      const length = combinedBuffer.length;
-      const dataSize = length * numberOfChannels * 2; // 2 bytes per sample per channel
-      const arrayBuffer = new ArrayBuffer(44 + dataSize);
-      const view = new DataView(arrayBuffer);
-
-      // WAV header
-      const writeString = (offset: number, string: string) => {
-        for (let i = 0; i < string.length; i++) {
-          view.setUint8(offset + i, string.charCodeAt(i));
-        }
-      };
-
-      writeString(0, 'RIFF');
-      view.setUint32(4, 36 + dataSize, true);
-      writeString(8, 'WAVE');
-      writeString(12, 'fmt ');
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true);
-      view.setUint16(22, numberOfChannels, true);
-      view.setUint32(24, sampleRate, true);
-      view.setUint32(28, sampleRate * numberOfChannels * 2, true);
-      view.setUint16(32, numberOfChannels * 2, true);
-      view.setUint16(34, 16, true);
-      writeString(36, 'data');
-      view.setUint32(40, dataSize, true);
-
-      // Convert float samples to 16-bit PCM (interleaved for multi-channel)
-      let offset = 44;
-      for (let i = 0; i < length; i++) {
-        for (let channel = 0; channel < numberOfChannels; channel++) {
-          const samples = combinedBuffer.getChannelData(channel);
-          const sample = Math.max(-1, Math.min(1, samples[i]));
-          view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-          offset += 2;
-        }
-      }
-
-      return new Blob([arrayBuffer], { type: 'audio/wav' });
-    } catch (error) {
-      console.error('Failed to concatenate audio properly, falling back to simple concatenation:', error);
-      // Fallback to simple concatenation
-      return new Blob(chunks, { type: 'audio/wav' });
+    // Write PCM data
+    let offset = 44;
+    for (const chunk of chunks) {
+      new Uint8Array(buffer).set(new Uint8Array(chunk), offset);
+      offset += chunk.byteLength;
     }
+
+    return new Blob([buffer], { type: 'audio/wav' });
   }, []);
 
-  // Play audio chunk with proper scheduling
-  const playAudioChunk = useCallback(async (chunk: Blob) => {
+  // Play raw PCM audio chunk with proper scheduling
+  const playAudioChunk = useCallback(async (pcmData: ArrayBuffer, audioInfo: AudioInfo) => {
     try {
       // Initialize audio context if needed
       if (!audioContextRef.current) {
@@ -150,8 +105,22 @@ export function useStreamingTTS({ apiBaseUrl, sessionId }: UseStreamingTTSProps)
       }
 
       const audioContext = audioContextRef.current;
-      const arrayBuffer = await chunk.arrayBuffer();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      const { sample_rate: sampleRate, channels, bits_per_sample } = audioInfo;
+
+      if (bits_per_sample !== 16) {
+        throw new Error('Only 16-bit audio is supported for PCM playback');
+      }
+
+      const frameCount = pcmData.byteLength / (channels * (bits_per_sample / 8));
+      const audioBuffer = audioContext.createBuffer(channels, frameCount, sampleRate);
+
+      const pcmInt16 = new Int16Array(pcmData);
+      const float32Data = new Float32Array(pcmInt16.length);
+      for (let i = 0; i < pcmInt16.length; i++) {
+        float32Data[i] = pcmInt16[i] / 32768;
+      }
+
+      audioBuffer.copyToChannel(float32Data, 0);
 
       // Create source and schedule playback
       const source = audioContext.createBufferSource();
@@ -177,7 +146,8 @@ export function useStreamingTTS({ apiBaseUrl, sessionId }: UseStreamingTTSProps)
         isStreaming: true,
         progress: null,
         error: null,
-        audioUrl: null
+        audioUrl: null,
+        audioInfo: null,
       }));
 
       abortControllerRef.current = new AbortController();
@@ -187,30 +157,48 @@ export function useStreamingTTS({ apiBaseUrl, sessionId }: UseStreamingTTSProps)
         scheduledTimeRef.current = audioContextRef.current.currentTime;
       }
 
+      let localAudioInfo: AudioInfo | null = null;
+      const pcmChunks: ArrayBuffer[] = [];
+
       for await (const { event, progress } of ttsService.generateSpeechSSE(request)) {
         if (abortControllerRef.current?.signal.aborted) break;
 
         setState(prev => ({ ...prev, progress }));
 
-        if (event.type === 'speech.audio.delta') {
-          // Play each chunk as it arrives for real-time experience
-          const latestChunk = progress.audioChunks[progress.audioChunks.length - 1];
-          if (latestChunk) {
-            await playAudioChunk(latestChunk);
+        if (event.type === 'speech.audio.info') {
+          localAudioInfo = event;
+          setState(prev => ({ ...prev, audioInfo: event }));
+        }
+
+        if (event.type === 'speech.audio.delta' && localAudioInfo) {
+          // Decode base64 raw PCM data
+          const audioData = atob(event.audio);
+          const bytes = new Uint8Array(audioData.length);
+          for (let i = 0; i < audioData.length; i++) {
+            bytes[i] = audioData.charCodeAt(i);
           }
+          const pcmData = bytes.buffer;
+          pcmChunks.push(pcmData);
+
+          // Play each chunk as it arrives for real-time experience
+          await playAudioChunk(pcmData, localAudioInfo);
         }
 
         if (event.type === 'speech.audio.done') {
           // Create final downloadable audio
-          const finalBlob = await createFinalAudio(progress.audioChunks);
-          const audioUrl = URL.createObjectURL(finalBlob);
+          if (localAudioInfo) {
+            const finalBlob = await createFinalAudio(pcmChunks, localAudioInfo);
+            const audioUrl = URL.createObjectURL(finalBlob);
 
-          setState(prev => ({
-            ...prev,
-            isStreaming: false,
-            audioUrl,
-            progress: { ...progress, isComplete: true }
-          }));
+            setState(prev => ({
+              ...prev,
+              isStreaming: false,
+              audioUrl,
+              progress: { ...progress, isComplete: true }
+            }));
+          } else {
+            setState(prev => ({ ...prev, isStreaming: false, error: "Audio info not received" }));
+          }
           break;
         }
       }
@@ -236,34 +224,59 @@ export function useStreamingTTS({ apiBaseUrl, sessionId }: UseStreamingTTSProps)
       }));
 
       abortControllerRef.current = new AbortController();
+      const audioChunks: Blob[] = [];
 
-      // Reset audio scheduling
-      if (audioContextRef.current) {
-        scheduledTimeRef.current = audioContextRef.current.currentTime;
-      }
+      const mediaSource = new MediaSource();
+      const audio = new Audio();
+      audio.src = URL.createObjectURL(mediaSource);
+      audio.play();
 
-      for await (const { chunk, progress } of ttsService.generateSpeechStream(request)) {
-        if (abortControllerRef.current?.signal.aborted) break;
+      mediaSource.addEventListener('sourceopen', async () => {
+        const sourceBuffer = mediaSource.addSourceBuffer('audio/wav; codecs="1"');
 
-        setState(prev => ({ ...prev, progress }));
+        try {
+          for await (const { chunk, progress } of ttsService.generateSpeechStream(request)) {
+            if (abortControllerRef.current?.signal.aborted) break;
 
-        // Play chunk immediately for real-time experience
-        await playAudioChunk(chunk);
+            const arrayBuffer = await chunk.arrayBuffer();
+            sourceBuffer.appendBuffer(arrayBuffer);
+            audioChunks.push(chunk);
 
-        if (progress.isComplete) {
-          // Create final downloadable audio
-          const finalBlob = await createFinalAudio(progress.audioChunks);
-          const audioUrl = URL.createObjectURL(finalBlob);
+            setState(prev => ({ ...prev, progress }));
 
+            if (progress.isComplete) {
+              // Let the player finish, then create final downloadable blob
+              setTimeout(() => {
+                if (mediaSource.readyState === "open") {
+                  mediaSource.endOfStream();
+                }
+              }, 100);
+
+              const finalBlob = new Blob(audioChunks, { type: 'audio/wav' });
+              const audioUrl = URL.createObjectURL(finalBlob);
+
+              setState(prev => ({
+                ...prev,
+                isStreaming: false,
+                audioUrl,
+                progress: { ...progress, isComplete: true }
+              }));
+              break;
+            }
+          }
+        } catch (error) {
+          console.error('Audio streaming error during stream consumption:', error);
+          if (mediaSource.readyState === "open") {
+            mediaSource.endOfStream();
+          }
           setState(prev => ({
             ...prev,
             isStreaming: false,
-            audioUrl,
-            progress: { ...progress, isComplete: true }
+            error: error instanceof Error ? error.message : 'Streaming failed'
           }));
-          break;
         }
-      }
+      });
+
     } catch (error) {
       console.error('Audio streaming error:', error);
       setState(prev => ({
@@ -272,7 +285,7 @@ export function useStreamingTTS({ apiBaseUrl, sessionId }: UseStreamingTTSProps)
         error: error instanceof Error ? error.message : 'Streaming failed'
       }));
     }
-  }, [ttsService, createFinalAudio, playAudioChunk]);
+  }, [ttsService]);
 
   // Main streaming function
   const startStreaming = useCallback(async (request: TTSRequest) => {
@@ -326,6 +339,7 @@ export function useStreamingTTS({ apiBaseUrl, sessionId }: UseStreamingTTSProps)
     progress: state.progress,
     audioUrl: state.audioUrl,
     error: state.error,
+    audioInfo: state.audioInfo,
 
     // Streaming controls
     isStreamingEnabled,

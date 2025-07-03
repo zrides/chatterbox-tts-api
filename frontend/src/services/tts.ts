@@ -109,17 +109,11 @@ export const createTTSService = (baseUrl: string, sessionId?: string) => ({
               const event: SSEEvent = JSON.parse(eventData);
 
               if (event.type === 'speech.audio.delta') {
-                // Decode base64 audio chunk
+                // For SSE, we don't create blobs here, just count bytes and chunks.
+                // The hook will handle decoding and processing.
                 const audioData = atob(event.audio);
-                const bytes = new Uint8Array(audioData.length);
-                for (let i = 0; i < audioData.length; i++) {
-                  bytes[i] = audioData.charCodeAt(i);
-                }
-                const chunk = new Blob([bytes], { type: 'audio/wav' });
-
-                progress.audioChunks.push(chunk);
                 progress.chunksReceived++;
-                progress.totalBytes += chunk.size;
+                progress.totalBytes += audioData.length;
               }
 
               yield { event, progress: { ...progress } };

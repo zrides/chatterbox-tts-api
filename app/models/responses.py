@@ -60,6 +60,15 @@ class SSEUsageInfo(BaseModel):
     total_tokens: int
 
 
+class SSEAudioInfo(BaseModel):
+    """SSE audio metadata event model"""
+    
+    type: str = "speech.audio.info"
+    sample_rate: int
+    channels: int
+    bits_per_sample: int
+
+
 class SSEAudioDelta(BaseModel):
     """SSE audio delta event model"""
     

@@ -65,6 +65,7 @@ export default function TTSPage() {
     progress: streamingProgress,
     audioUrl: streamingAudioUrl,
     error: streamingError,
+    audioInfo,
     isStreamingEnabled,
     toggleStreaming,
     streamingFormat,
@@ -356,6 +357,7 @@ export default function TTSPage() {
                 progress={streamingProgress}
                 audioUrl={streamingAudioUrl}
                 error={streamingError}
+                audioInfo={audioInfo}
                 onStop={stopStreaming}
                 onClear={clearStreamingAudio}
               />

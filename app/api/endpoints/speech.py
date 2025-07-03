@@ -10,11 +10,12 @@ import torch
 import torchaudio as ta
 import base64
 import json
+import struct
 from typing import Optional, List, Dict, Any, AsyncGenerator
 from fastapi import APIRouter, HTTPException, status, Form, File, UploadFile
 from fastapi.responses import StreamingResponse
 
-from app.models import TTSRequest, ErrorResponse, SSEAudioDelta, SSEAudioDone, SSEUsageInfo
+from app.models import TTSRequest, ErrorResponse, SSEAudioDelta, SSEAudioDone, SSEUsageInfo, SSEAudioInfo
 from app.config import Config
 from app.core import (
     get_memory_info, cleanup_memory, safe_delete_tensors,
@@ -33,6 +34,29 @@ REQUEST_COUNTER = 0
 
 # Supported audio formats for voice uploads
 SUPPORTED_AUDIO_FORMATS = {'.mp3', '.wav', '.flac', '.m4a', '.ogg'}
+
+
+def create_wav_header(sample_rate: int, channels: int, bits_per_sample: int, data_size: int = 0xFFFFFFFF) -> bytes:
+    """Creates a WAV header for streaming."""
+    header = io.BytesIO()
+    header.write(b'RIFF')
+    # Use a large, but not max, value for chunk size to avoid overflow issues in some players
+    chunk_size = 36 + data_size if data_size != 0xFFFFFFFF else 0x7FFFFFFF - 36
+    header.write(struct.pack('<I', chunk_size))
+    header.write(b'WAVE')
+    header.write(b'fmt ')
+    header.write(struct.pack('<I', 16))  # Subchunk1Size for PCM
+    header.write(struct.pack('<H', 1))   # AudioFormat (1 for PCM)
+    header.write(struct.pack('<H', channels))
+    header.write(struct.pack('<I', sample_rate))
+    byte_rate = sample_rate * channels * (bits_per_sample // 8)
+    header.write(struct.pack('<I', byte_rate))
+    block_align = channels * (bits_per_sample // 8)
+    header.write(struct.pack('<H', block_align))
+    header.write(struct.pack('<H', bits_per_sample))
+    header.write(b'data')
+    header.write(struct.pack('<I', data_size)) # Subchunk2Size
+    return header.getvalue()
 
 
 def resolve_voice_path(voice_name: Optional[str]) -> str:
@@ -417,15 +441,8 @@ async def generate_speech_streaming(
         update_tts_status(request_id, TTSStatus.GENERATING_AUDIO, "Starting streaming audio generation", 
                         current_chunk=0, total_chunks=len(chunks))
         
-        # We'll write a temporary WAV header and update it later with correct size
-        # For streaming, we start with a placeholder header
-        header_buffer = io.BytesIO()
-        temp_audio = torch.zeros(1, sample_rate)  # 1 second of silence as placeholder
-        ta.save(header_buffer, temp_audio, sample_rate, format="wav")
-        header_data = header_buffer.getvalue()
-        
-        # Extract just the WAV header (first 44 bytes typically)
-        wav_header = header_data[:44]
+        # Yield a proper WAV header for streaming
+        wav_header = create_wav_header(sample_rate, channels, bits_per_sample)
         yield wav_header
         
         # Generate and stream audio for each chunk
@@ -457,22 +474,21 @@ async def generate_speech_streaming(
                 # Ensure tensor is on CPU for streaming
                 if hasattr(audio_tensor, 'cpu'):
                     audio_tensor = audio_tensor.cpu()
+
+                # Convert tensor to raw 16-bit PCM data
+                # Clamp values to [-1, 1] before conversion
+                audio_tensor = torch.clamp(audio_tensor, -1.0, 1.0)
+                audio_tensor_int = (audio_tensor * 32767).to(torch.int16)
                 
-                # Convert tensor to WAV bytes (raw audio data only, no header)
-                temp_buffer = io.BytesIO()
-                ta.save(temp_buffer, audio_tensor, sample_rate, format="wav")
-                temp_data = temp_buffer.getvalue()
+                # Yield the raw audio data as bytes
+                pcm_data = audio_tensor_int.numpy().tobytes()
+                yield pcm_data
                 
-                # Extract just the audio data (skip the 44-byte header)
-                audio_data = temp_data[44:]
                 total_samples += audio_tensor.shape[1]
                 
-                # Yield the raw audio data
-                yield audio_data
-                
                 # Clean up this chunk
-                safe_delete_tensors(audio_tensor)
-                del temp_buffer, temp_data, audio_data
+                safe_delete_tensors(audio_tensor, audio_tensor_int)
+                del pcm_data
             
             # Periodic memory cleanup during generation
             if i > 0 and i % 3 == 0:  # Every 3 chunks
@@ -585,6 +601,8 @@ async def generate_speech_sse(
 
     # WAV header info for conversion
     sample_rate = model.sr
+    channels = 1
+    bits_per_sample = 16
     total_audio_chunks = 0
     total_input_tokens = len(text.split())  # Rough token count
     
@@ -621,6 +639,14 @@ async def generate_speech_sse(
         update_tts_status(request_id, TTSStatus.GENERATING_AUDIO, "Starting SSE audio generation", 
                         current_chunk=0, total_chunks=len(chunks))
         
+        # First, send an info event with audio parameters
+        info_event = SSEAudioInfo(
+            sample_rate=sample_rate,
+            channels=channels,
+            bits_per_sample=bits_per_sample
+        )
+        yield f"data: {info_event.model_dump_json()}\n\n"
+        
         # Generate and stream audio for each chunk as SSE events
         loop = asyncio.get_event_loop()
         
@@ -649,14 +675,14 @@ async def generate_speech_sse(
                 # Ensure tensor is on CPU for processing
                 if hasattr(audio_tensor, 'cpu'):
                     audio_tensor = audio_tensor.cpu()
+
+                # Convert tensor to raw 16-bit PCM data
+                audio_tensor = torch.clamp(audio_tensor, -1.0, 1.0)
+                audio_tensor_int = (audio_tensor * 32767).to(torch.int16)
+                pcm_data = audio_tensor_int.numpy().tobytes()
                 
-                # Convert tensor to complete WAV bytes (including header)
-                temp_buffer = io.BytesIO()
-                ta.save(temp_buffer, audio_tensor, sample_rate, format="wav")
-                wav_data = temp_buffer.getvalue()
-                
-                # Convert complete WAV to base64 (including header for proper decoding)
-                audio_base64 = base64.b64encode(wav_data).decode('utf-8')
+                # Base64 encode the raw PCM data
+                audio_base64 = base64.b64encode(pcm_data).decode('utf-8')
                 
                 # Create SSE event for this audio chunk
                 sse_event = SSEAudioDelta(audio=audio_base64)
@@ -668,8 +694,8 @@ async def generate_speech_sse(
                 total_audio_chunks += 1
                 
                 # Clean up this chunk
-                safe_delete_tensors(audio_tensor)
-                del temp_buffer, wav_data
+                safe_delete_tensors(audio_tensor, audio_tensor_int)
+                del pcm_data
             
             # Periodic memory cleanup during generation
             if i > 0 and i % 3 == 0:  # Every 3 chunks
