@@ -15,7 +15,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
 
-BASE_URL = "http://localhost:5123"
+BASE_URL = "http://localhost:4123"
 OUTPUT_DIR = Path("test_output")
 
 
@@ -244,7 +244,7 @@ import requests
 
 # Main JSON endpoint (recommended for default voice)
 response = requests.post(
-    "http://localhost:5123/v1/audio/speech",
+    "http://localhost:4123/v1/audio/speech",
     json={
         "input": "Hello world!",
         "exaggeration": 0.7
@@ -261,7 +261,7 @@ import requests
 
 # Upload endpoint without file (uses default voice)
 response = requests.post(
-    "http://localhost:5123/v1/audio/speech/upload",
+    "http://localhost:4123/v1/audio/speech/upload",
     data={
         "input": "Hello world!",
         "exaggeration": 0.7
@@ -278,7 +278,7 @@ import requests
 
 with open("my_voice.mp3", "rb") as voice_file:
     response = requests.post(
-        "http://localhost:5123/v1/audio/speech/upload",
+        "http://localhost:4123/v1/audio/speech/upload",
         data={
             "input": "Hello with my custom voice!",
             "exaggeration": 0.8,
@@ -295,7 +295,7 @@ with open("output.wav", "wb") as f:
     
     print("\n🔹 cURL example (JSON - default voice):")
     print("""
-curl -X POST http://localhost:5123/v1/audio/speech \\
+curl -X POST http://localhost:4123/v1/audio/speech \\
   -H "Content-Type: application/json" \\
   -d '{"input": "Hello world!", "exaggeration": 0.8}' \\
   --output output.wav
@@ -303,7 +303,7 @@ curl -X POST http://localhost:5123/v1/audio/speech \\
     
     print("\n🔹 cURL example (custom voice upload):")
     print("""
-curl -X POST http://localhost:5123/v1/audio/speech/upload \\
+curl -X POST http://localhost:4123/v1/audio/speech/upload \\
   -F "input=Hello with my custom voice!" \\
   -F "exaggeration=0.8" \\
   -F "voice_file=@my_voice.mp3" \\

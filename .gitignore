@@ -10,7 +10,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -93,3 +92,10 @@ temp/
 *.tmp 
 
 node_modules/
+
+voices/
+
+coverage.xml
+test_*
+
+!tests/test_*

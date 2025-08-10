@@ -9,14 +9,32 @@ from functools import wraps
 # Centralized endpoint aliases configuration
 # Format: "primary_endpoint": ["alias1", "alias2", ...]
 ENDPOINT_ALIASES: Dict[str, List[str]] = {
-    "/audio/speech": ["/v1/audio/speech"],
-    "/audio/speech/upload": ["/v1/audio/speech/upload"],
+    "/audio/speech": ["/v1/audio/speech", "/tts"],
+    "/audio/speech/upload": ["/v1/audio/speech/upload", "/tts/upload"],
+    "/audio/speech/stream": ["/v1/audio/speech/stream", "/tts/stream"],
+    "/audio/speech/stream/upload": ["/v1/audio/speech/stream/upload", "/tts/stream/upload"],
+    "/voices": ["/v1/voices", "/voice-library", "/voice_library"],
+    "/voices/default": ["/v1/voices/default", "/default-voice"],
+    "/voices/{voice_name}": ["/v1/voices/{voice_name}"],
+    "/voices/{voice_name}/download": ["/v1/voices/{voice_name}/download"],
+    "/voices/{voice_name}/aliases": ["/v1/voices/{voice_name}/aliases"],
+    "/voices/{voice_name}/aliases/{alias}": ["/v1/voices/{voice_name}/aliases/{alias}"],
+    "/voices/all-names": ["/v1/voices/all-names"],
+    "/voices/cleanup": ["/v1/voices/cleanup"],
     "/health": ["/v1/health", "/status"],
     "/models": ["/v1/models"],
     "/config": ["/v1/config"],
     "/endpoints": ["/v1/endpoints", "/routes"],
     "/memory": ["/v1/memory"],
+    "/memory/config": ["/v1/memory/config"],
     "/memory/reset": ["/v1/memory/reset"],
+    "/memory/recommendations": ["/v1/memory/recommendations"],
+    "/status": ["/v1/status", "/processing", "/processing/status"],
+    "/status/progress": ["/v1/status/progress", "/progress"],
+    "/status/history": ["/v1/status/history", "/history"],
+    "/status/statistics": ["/v1/status/statistics", "/stats"],
+    "/status/history/clear": ["/v1/status/history/clear"],
+    "/info": ["/v1/info", "/api/info"],
 }
 
 

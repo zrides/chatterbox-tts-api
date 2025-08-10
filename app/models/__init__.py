@@ -8,7 +8,15 @@ from .responses import (
     ModelInfo,
     ModelsResponse,
     ConfigResponse,
-    ErrorResponse
+    ErrorResponse,
+    SSEUsageInfo,
+    SSEAudioInfo,
+    SSEAudioDelta,
+    SSEAudioDone,
+    TTSProgressResponse,
+    TTSStatusResponse,
+    TTSStatisticsResponse,
+    APIInfoResponse
 )
 
 __all__ = [
@@ -17,5 +25,13 @@ __all__ = [
     "ModelInfo", 
     "ModelsResponse",
     "ConfigResponse",
-    "ErrorResponse"
+    "ErrorResponse",
+    "SSEUsageInfo",
+    "SSEAudioInfo",
+    "SSEAudioDelta", 
+    "SSEAudioDone",
+    "TTSProgressResponse",
+    "TTSStatusResponse",
+    "TTSStatisticsResponse",
+    "APIInfoResponse"
 ] 

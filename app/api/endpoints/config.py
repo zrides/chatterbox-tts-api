@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from app.models import ConfigResponse
 from app.config import Config
 from app.core.tts_model import get_device
-from app.core import add_route_aliases, get_endpoint_info
+from app.core import add_route_aliases, get_endpoint_info, get_version, get_version_info
 
 # Create router with aliasing support
 base_router = APIRouter()
@@ -23,8 +23,19 @@ router = add_route_aliases(base_router)
 async def get_config():
     """Get current configuration"""
     device = get_device()
+    version_info = get_version_info()
     
     return ConfigResponse(
+        api_info={
+            "name": version_info.get("name", "Chatterbox TTS API"),
+            "version": version_info["version"],
+            "api_version": version_info["api_version"],
+            "description": version_info.get("description", ""),
+            "license": version_info.get("license", "Unknown"),
+            "author": version_info.get("author", "Unknown"),
+            "python_version": version_info["python_version"],
+            "platform": version_info["platform"]
+        },
         server={
             "host": Config.HOST,
             "port": Config.PORT

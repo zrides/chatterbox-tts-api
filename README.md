@@ -17,7 +17,7 @@
   </a>
 </p>
 
-**FastAPI**-powered REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities
+**FastAPI**-powered REST API for [Chatterbox TTS](https://github.com/resemble-ai/chatterbox), providing OpenAI-compatible text-to-speech endpoints with voice cloning capabilities and additional features on top of the `chatterbox-tts` base package.
 
 ## Features
 
@@ -25,18 +25,29 @@
 ⚡ **FastAPI Performance** - High-performance async API with automatic documentation  
 🎨 **React Frontend** - Includes an optional, ready-to-use web interface  
 🎭 **Voice Cloning** - Use your own voice samples for personalized speech  
-🎤 **Voice Upload** - Upload custom voice files per request or use configured default  
+🎤 **Voice Library Management** - Upload, manage, and use custom voices by name  
 📝 **Smart Text Processing** - Automatic chunking for long texts  
-🐳 **Docker Ready** - Full containerization support  
+📊 **Real-time Status** - Monitor TTS progress, statistics, and request history  
+🐳 **Docker Ready** - Full containerization with persistent voice storage  
 ⚙️ **Configurable** - Extensive environment variable configuration  
 🎛️ **Parameter Control** - Real-time adjustment of speech characteristics  
 📚 **Auto Documentation** - Interactive API docs at `/docs` and `/redoc`  
 🔧 **Type Safety** - Full Pydantic validation for requests and responses  
 🧠 **Memory Management** - Advanced memory monitoring and automatic cleanup
 
-## Quick Start
+## ⚡️ Quick Start
 
-### Local Installation
+```bash
+git clone https://github.com/travisvn/chatterbox-tts-api
+cd chatterbox-tts-api
+uv sync
+uv run main.py
+```
+
+> [!TIP]
+> [uv](https://docs.astral.sh/uv/) installed with `curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+### Local Installation with Python 🐍
 
 #### Option A: Using uv (Recommended - Faster & Better Dependencies)
 
@@ -90,7 +101,7 @@ python main.py
 
 > Ran into issues? Check the [troubleshooting section](https://github.com/travisvn/chatterbox-tts-api?tab=readme-ov-file#common-issues)
 
-### Docker (Recommended)
+### 🐳 Docker (Recommended)
 
 ```bash
 # Clone and start with Docker Compose
@@ -155,7 +166,7 @@ For local development, you can run the API and frontend separately:
 ```bash
 # Start the API first (follow earlier instructions)
 # Then run the frontend:
-cd frontend && npm run dev
+cd frontend && npm install && npm run dev
 ```
 
 Click the link provided from Vite to access the web UI.
@@ -165,7 +176,7 @@ Click the link provided from Vite to access the web UI.
 Build the frontend for production deployment:
 
 ```bash
-cd frontend && npm run build
+cd frontend && npm install && npm run build
 ```
 
 You can then access it directly from your local file system at `/dist/index.html`.
@@ -178,6 +189,20 @@ You can then access it directly from your local file system at `/dist/index.html
 The frontend uses a reverse proxy to route requests, so when running with `--profile frontend`, the web interface will be available at `http://localhost:4321` while the API runs behind the proxy.
 
 </details>
+
+## Screenshots of Frontend (Web UI)
+
+<div align="center">
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUS62gM9PGyDAvTxnjVKQO0Zz5uI6Jg4UodHEa" alt="Chatterbox TTS API - Frontend - Dark Mode" width="33%" />
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUXYXF1ekWhMaPnZ3rSTRIEkDzvKwGU05qjAol" alt="Chatterbox TTS API - Frontend - Light Mode" width="33%" />
+</div>
+
+<div align="center">
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUt4kJ0goXPb09QmDchfSoNxgB3KLETFyvnsU5" alt="Chatterbox TTS API - Frontend Processing - Dark Mode" width="33%" />
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOU0v7EUEwi1efdOvQm6TrWKoPuX7xEl4pc8RVw" alt="Chatterbox TTS API - Frontend Processing - Light Mode" width="33%" />
+</div>
+
+> 🖼️ View screenshot of full frontend web UI — [light mode](https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUoONOy6UZv2m8CUjqGrBbDy4aXzNV9Rl1ZAgQ) / [dark mode](https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOU7RmQRTFVcR8ntzKQs0IxJ6ibFrq2hjCSadUG)
 
 ## API Usage
 
@@ -224,6 +249,76 @@ curl -X POST http://localhost:4123/v1/audio/speech/upload \
   -F "voice_file=@dramatic_voice.wav" \
   --output dramatic.wav
 ```
+
+### Voice Library Management
+
+Store and manage custom voices by name for reuse across requests:
+
+```bash
+# Upload a voice to the library
+curl -X POST http://localhost:4123/v1/voices \
+  -F "voice_file=@my_voice.wav" \
+  -F "name=my-custom-voice"
+
+# Use the voice by name in speech generation
+curl -X POST http://localhost:4123/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Hello with my custom voice!", "voice": "my-custom-voice"}' \
+  --output custom_voice_output.wav
+
+# List all available voices
+curl http://localhost:4123/v1/voices
+```
+
+**🔧 [Complete Voice Library Documentation →](docs/VOICE_LIBRARY_MANAGEMENT.md)**
+
+## 🎵 Real-time Audio Streaming
+
+The API supports multiple streaming formats for lower latency and better user experience:
+
+- **Raw Audio Streaming**: Traditional audio chunks (WAV format)
+- **Server-Side Events (SSE)**: OpenAI-compatible format with base64-encoded audio chunks
+
+### Quick Start
+
+```bash
+# Basic audio streaming
+curl -X POST http://localhost:4123/v1/audio/speech/stream \
+  -H "Content-Type: application/json" \
+  -d '{"input": "This streams in real-time!"}' \
+  --output streaming.wav
+
+# SSE streaming (OpenAI compatible)
+curl -X POST http://localhost:4123/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"input": "This streams as Server-Side Events!", "stream_format": "sse"}' \
+  --no-buffer
+
+# Real-time playback
+curl -X POST http://localhost:4123/v1/audio/speech/stream \
+  -H "Content-Type: application/json" \
+  -d '{"input": "Play as it generates!"}' \
+  | ffplay -f wav -i pipe:0 -autoexit -nodisp
+```
+
+### 🚀 **[Complete Streaming Documentation →](docs/STREAMING_API.md)**
+
+For comprehensive streaming features including:
+
+- **Advanced chunking strategies** (sentence, paragraph, word, fixed)
+- **Quality presets** (fast, balanced, high)
+- **Configurable parameters** and performance tuning
+- **Real-time progress monitoring**
+- **Python, JavaScript, and cURL examples**
+- **Integration patterns** for different use cases
+
+**Key Benefits:**
+
+- ⚡ **Lower latency** - Start hearing audio in 1-2 seconds
+- 🎯 **Better UX** - No waiting for complete generation
+- 💾 **Memory efficient** - Process chunks individually
+- 🎛️ **Configurable** - Choose speed vs quality trade-offs
 
 <details>
 <summary><strong>🐍 Python Examples</strong></summary>
@@ -284,6 +379,76 @@ with open("custom_output.wav", "wb") as f:
     f.write(response.content)
 ```
 
+### Basic Streaming Example
+
+```python
+import requests
+
+# Stream audio generation in real-time
+response = requests.post(
+    "http://localhost:4123/v1/audio/speech/stream",
+    json={
+        "input": "This will stream as it's generated!",
+        "exaggeration": 0.8
+    },
+    stream=True  # Enable streaming mode
+)
+
+with open("streaming_output.wav", "wb") as f:
+    for chunk in response.iter_content(chunk_size=8192):
+        if chunk:
+            f.write(chunk)
+            print(f"Received chunk: {len(chunk)} bytes")
+```
+
+### SSE Streaming Example (OpenAI Compatible)
+
+```python
+import requests
+import json
+import base64
+
+# Stream audio using Server-Side Events format
+response = requests.post(
+    "http://localhost:4123/v1/audio/speech",
+    json={
+        "input": "This streams as Server-Side Events!",
+        "stream_format": "sse",
+        "exaggeration": 0.8
+    },
+    stream=True,
+    headers={'Accept': 'text/event-stream'}
+)
+
+audio_chunks = []
+
+for line in response.iter_lines(decode_unicode=True):
+    if line.startswith('data: '):
+        event_data = line[6:]  # Remove 'data: ' prefix
+
+        try:
+            event = json.loads(event_data)
+
+            if event.get('type') == 'speech.audio.delta':
+                # Decode base64 audio chunk
+                audio_data = base64.b64decode(event['audio'])
+                audio_chunks.append(audio_data)
+                print(f"Received audio chunk: {len(audio_data)} bytes")
+
+            elif event.get('type') == 'speech.audio.done':
+                usage = event.get('usage', {})
+                print(f"Complete! Tokens: {usage.get('total_tokens', 0)}")
+                break
+        except:
+            continue
+
+print(f"Received {len(audio_chunks)} audio chunks")
+```
+
+**📚 [Complete Streaming Examples & Documentation →](docs/STREAMING_API.md)**
+
+Including real-time playback, progress monitoring, custom voice uploads, and advanced integration patterns.
+
 </details>
 
 ### Voice File Requirements
@@ -303,7 +468,7 @@ with open("custom_output.wav", "wb") as f:
 - Avoid background noise for best results
 - Higher quality audio produces better voice cloning
 
-## Configuration
+## 🎛️ Configuration
 
 The project provides two environment example files:
 
@@ -387,14 +552,22 @@ docker compose -f docker/docker-compose.gpu.yml up -d
 
 ## API Endpoints
 
-| Endpoint           | Method | Description                      |
-| ------------------ | ------ | -------------------------------- |
-| `/v1/audio/speech` | POST   | Generate speech from text        |
-| `/health`          | GET    | Health check and status          |
-| `/config`          | GET    | Current configuration            |
-| `/v1/models`       | GET    | Available models (OpenAI compat) |
-| `/docs`            | GET    | Interactive API documentation    |
-| `/redoc`           | GET    | Alternative API documentation    |
+| Endpoint                      | Method | Description                                                         |
+| ----------------------------- | ------ | ------------------------------------------------------------------- |
+| `/audio/speech`               | POST   | Generate speech from text (complete)                                |
+| `/audio/speech/upload`        | POST   | Generate speech with voice upload                                   |
+| `/audio/speech/stream`        | POST   | **Stream** speech generation ([docs](docs/STREAMING_API.md))        |
+| `/audio/speech/stream/upload` | POST   | **Stream** speech with voice upload ([docs](docs/STREAMING_API.md)) |
+| `/health`                     | GET    | Health check and status                                             |
+| `/config`                     | GET    | Current configuration                                               |
+| `/v1/models`                  | GET    | Available models (OpenAI compat)                                    |
+| `/status`                     | GET    | TTS processing status & progress                                    |
+| `/status/progress`            | GET    | Real-time progress (lightweight)                                    |
+| `/status/statistics`          | GET    | Processing statistics                                               |
+| `/status/history`             | GET    | Recent request history                                              |
+| `/info`                       | GET    | Complete API information                                            |
+| `/docs`                       | GET    | Interactive API documentation                                       |
+| `/redoc`                      | GET    | Alternative API documentation                                       |
 
 ## Parameters Reference
 
@@ -418,6 +591,11 @@ docker compose -f docker/docker-compose.gpu.yml up -d
 - `0.4-0.6`: More consistent
 - `0.8`: Default balance
 - `1.0+`: More creative/random
+
+**Stream Format**
+
+- `audio`: Raw audio streaming (default)
+- `sse`: Server-Side Events with base64-encoded audio chunks (OpenAI compatible)
 
 </details>
 
@@ -453,6 +631,44 @@ curl "http://localhost:4123/memory?cleanup=true&force_cuda_clear=true"
 # Reset memory tracking (with confirmation)
 curl -X POST "http://localhost:4123/memory/reset?confirm=true"
 ```
+
+### Real-time Status Tracking
+
+Monitor TTS processing in real-time:
+
+```bash
+# Check current processing status
+curl "http://localhost:4123/v1/status/progress"
+
+# Get detailed status with memory and stats
+curl "http://localhost:4123/v1/status?include_memory=true&include_stats=true"
+
+# View processing statistics
+curl "http://localhost:4123/v1/status/statistics"
+
+# Check request history
+curl "http://localhost:4123/v1/status/history?limit=5"
+
+# Get comprehensive API information
+curl "http://localhost:4123/info"
+```
+
+**Status Response Example:**
+
+```json
+{
+  "is_processing": true,
+  "status": "generating_audio",
+  "current_step": "Generating audio for chunk 2/4",
+  "current_chunk": 2,
+  "total_chunks": 4,
+  "progress_percentage": 50.0,
+  "duration_seconds": 2.5,
+  "text_preview": "Your text being processed..."
+}
+```
+
+See [Status API Documentation](docs/STATUS_API.md) for complete details.
 
 ### Memory Testing
 
@@ -712,8 +928,11 @@ python start.py info
 # Install in development mode (pip)
 pip install -e .
 
-# Or with uv
-uv sync --extra dev
+# Or with uv (basic development tools)
+uv sync
+
+# Or with test dependencies (for contributors)
+uv sync --group test
 
 # Start with auto-reload (FastAPI development)
 uvicorn app.main:app --host 0.0.0.0 --port 4123 --reload
@@ -766,11 +985,31 @@ curl http://localhost:4123/openapi.json
 ## Support
 
 - 📖 **Documentation**: See [API Documentation](docs/API_README.md) and [Docker Guide](docs/DOCKER_README.md)
-- 🔄 **Migration**: Upgrading to uv? See the [uv Migration Guide](docs/UV_MIGRATION.md)
-- 🚀 **FastAPI**: New to FastAPI? Check the [FastAPI docs](https://fastapi.tiangolo.com/)
 - 🐛 **Issues**: Report bugs and feature requests via GitHub issues
-- 💬 **Discord**: Join the [Chatterbox TTS Discord](https://discord.gg/XqS7RxUp) or the [Discord for this project](http://chatterboxtts.com/discord)
+- 💬 **Discord**: [Join the Discord for this project](http://chatterboxtts.com/discord)
 
 ---
 
-Made with ♥️ for the open source community
+## 🔗 Integrations
+
+### Open WebUI
+
+> [!TIP]
+> Customize available voices first by using the frontend at `http://localhost:4321`
+
+To use Chatterbox TTS API with Open WebUI, follow these steps:
+
+- Open the Admin Panel and go to `Settings` -> `Audio`
+- Set your TTS Settings to match the following:
+  - Text-to-Speech Engine: _OpenAI_
+  - API Base URL: `http://localhost:4123/v1` # alternatively, try `http://host.docker.internal:4123/v1`
+  - API Key: `none`
+  - TTS Model: `tts-1` or `tts-1-hd`
+  - TTS Voice: _Name of the voice you've cloned_ (can also include aliases, defined in the frontend)
+  - Response splitting: `Paragraphs`
+
+<p align="center">
+  <img src="https://lm17s1uz51.ufs.sh/f/EsgO8cDHBTOUjUe3QjHytHQ0xqn2CishmXgGfeJ4o983TUMO" alt="Settings to integrate Chatterbox TTS API with Open WebUI" />
+</p>
+
+### ➡️ View the [Open WebUI docs for installing Chatterbox TTS API](https://docs.openwebui.com/tutorials/text-to-speech/chatterbox-tts-api-integration)

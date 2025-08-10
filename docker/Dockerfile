@@ -29,13 +29,12 @@ RUN pip install --no-cache-dir fastapi uvicorn[standard] python-dotenv python-mu
 # Copy application code
 COPY app/ ./app/
 COPY main.py ./
-COPY tests/ ./tests/
 
 # Copy voice sample if it exists (optional, can be mounted)
 COPY voice-sample.mp3 ./voice-sample.mp3
 
-# Create directory for model cache (separate from source code)
-RUN mkdir -p /cache
+# Create directories for model cache and voice library (separate from source code)
+RUN mkdir -p /cache /voices
 
 # Set default environment variables
 ENV PORT=4123
@@ -47,6 +46,7 @@ ENV MAX_CHUNK_LENGTH=280
 ENV MAX_TOTAL_LENGTH=3000
 ENV DEVICE=auto
 ENV MODEL_CACHE_DIR=/cache
+ENV VOICE_LIBRARY_DIR=/voices
 ENV HOST=0.0.0.0
 
 # Expose port

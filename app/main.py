@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.tts_model import initialize_model
+from app.core.voice_library import get_voice_library
 from app.api.router import api_router
 from app.config import Config
 
@@ -27,10 +28,35 @@ ascii_art = r"""
 async def lifespan(app: FastAPI):
     # Startup
     print(ascii_art)
-    await initialize_model()
+    
+    # Start model initialization in the background
+    # This allows the server to respond to health checks immediately
+    # while the model loads asynchronously
+    import asyncio
+    model_init_task = asyncio.create_task(initialize_model())
+    
+    # Initialize voice library to restore default voice settings
+    print("Initializing voice library...")
+    voice_lib = get_voice_library()
+    default_voice = voice_lib.get_default_voice()
+    if default_voice:
+        print(f"Restored default voice: {default_voice}")
+    else:
+        print("Using system default voice")
+    
+    # Note: We don't await the model initialization here
+    # The server will start immediately and health checks will show initialization status
+    
     yield
+    
     # Shutdown (cleanup if needed)
-    pass
+    # Cancel model initialization if it's still running
+    if not model_init_task.done():
+        model_init_task.cancel()
+        try:
+            await model_init_task
+        except asyncio.CancelledError:
+            pass
 
 
 # Create FastAPI app

@@ -1,365 +1,393 @@
 #!/usr/bin/env python3
 """
-Memory Management Test Script for Chatterbox TTS API
+Pytest-based memory management tests for Chatterbox TTS API
 Tests memory usage patterns and cleanup functionality
 """
 
-import requests
-import json
+import pytest
 import time
-import concurrent.futures
-from typing import Dict, List
 
-# Configuration
-API_BASE_URL = "http://localhost:4123"
+# Test data
+TEST_TEXTS = {
+    "short": "Hello, this is a simple test.",
+    "medium": "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet.",
+    "long": "In a hole in the ground there lived a hobbit. Not a nasty, dirty, wet hole, filled with the ends of worms and an oozy smell, nor yet a dry, bare, sandy hole with nothing in it to sit down on or to eat: it was a hobbit-hole, and that means comfort.",
+}
 
-def get_memory_status() -> Dict:
-    """Get current memory status from the API"""
-    try:
-        response = requests.get(f"{API_BASE_URL}/memory")
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"Failed to get memory status: {response.status_code}")
-            return {}
-    except Exception as e:
-        print(f"Error getting memory status: {e}")
-        return {}
 
-def perform_cleanup() -> Dict:
-    """Trigger manual memory cleanup"""
-    try:
-        response = requests.get(f"{API_BASE_URL}/memory?cleanup=true&force_cuda_clear=true")
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"Failed to perform cleanup: {response.status_code}")
-            return {}
-    except Exception as e:
-        print(f"Error performing cleanup: {e}")
-        return {}
-
-def reset_memory_tracking() -> Dict:
-    """Reset memory tracking (with confirmation)"""
-    try:
-        response = requests.post(f"{API_BASE_URL}/memory/reset?confirm=true")
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"Failed to reset memory tracking: {response.status_code}")
-            return {}
-    except Exception as e:
-        print(f"Error resetting memory tracking: {e}")
-        return {}
-
-def generate_speech(text: str, request_id: int) -> Dict:
-    """Generate speech and return timing/memory info"""
+# Helper functions for tests
+def generate_speech_and_validate(api_client, text, output_file=None, params=None, endpoint="/v1/audio/speech"):
+    """Generate speech and validate response"""
+    payload = {"input": text}
+    if params:
+        payload.update(params)
+    
     start_time = time.time()
+    response = api_client.post(endpoint, json=payload)
+    duration = time.time() - start_time
     
-    try:
-        response = requests.post(
-            f"{API_BASE_URL}/v1/audio/speech",
-            json={"input": text},
-            headers={"Content-Type": "application/json"}
-        )
+    result = {
+        "success": response.status_code == 200,
+        "status_code": response.status_code,
+        "duration": duration,
+        "payload": payload
+    }
+    
+    if response.status_code == 200:
+        result["audio_size"] = len(response.content)
+        result["content"] = response.content
         
-        end_time = time.time()
-        duration = end_time - start_time
+        if output_file:
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_file, "wb") as f:
+                f.write(response.content)
+            result["output_file"] = output_file
+    else:
+        try:
+            result["error"] = response.json()
+        except:
+            result["error"] = response.text
+    
+    return result
+
+
+def run_concurrent_requests(api_client, requests_data, max_workers=3):
+    """Run multiple requests concurrently"""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    results = []
+    
+    def make_request(request_data):
+        endpoint = request_data.get("endpoint", "/v1/audio/speech")
+        payload = request_data.get("payload", {})
+        request_id = request_data.get("id", 0)
         
-        if response.status_code == 200:
-            return {
-                "request_id": request_id,
-                "success": True,
-                "duration": duration,
-                "audio_size": len(response.content),
-                "text_length": len(text)
-            }
-        else:
-            return {
-                "request_id": request_id,
-                "success": False,
-                "duration": duration,
-                "error": response.text
-            }
+        try:
+            start_time = time.time()
+            response = api_client.post(endpoint, json=payload)
+            duration = time.time() - start_time
             
-    except Exception as e:
-        return {
-            "request_id": request_id,
-            "success": False,
-            "duration": time.time() - start_time,
-            "error": str(e)
-        }
+            return {
+                "id": request_id,
+                "success": response.status_code == 200,
+                "status_code": response.status_code,
+                "duration": duration,
+                "audio_size": len(response.content) if response.status_code == 200 else 0,
+                "payload": payload
+            }
+        except Exception as e:
+            return {
+                "id": request_id,
+                "success": False,
+                "error": str(e),
+                "duration": time.time() - start_time,
+                "payload": payload
+            }
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(make_request, data) for data in requests_data]
+        results = [future.result() for future in as_completed(futures)]
+    
+    return sorted(results, key=lambda x: x.get("id", 0))
 
-def test_memory_baseline():
-    """Test baseline memory usage"""
-    print("=" * 60)
-    print("Memory Baseline Test")
-    print("=" * 60)
-    
-    # Reset memory tracking
-    print("Resetting memory tracking...")
-    reset_result = reset_memory_tracking()
-    print(f"Reset result: {reset_result.get('status', 'unknown')}")
-    
-    # Get initial memory status
-    initial_memory = get_memory_status()
-    print(f"Initial memory status:")
-    if 'memory_info' in initial_memory:
-        memory_info = initial_memory['memory_info']
-        print(f"  CPU: {memory_info.get('cpu_memory_mb', 0):.1f}MB")
-        if 'gpu_memory_allocated_mb' in memory_info:
-            print(f"  GPU: {memory_info.get('gpu_memory_allocated_mb', 0):.1f}MB allocated")
-    
-    return initial_memory
 
-def test_sequential_requests(num_requests: int = 10):
-    """Test memory usage with sequential requests"""
-    print(f"\n{'='*60}")
-    print(f"Sequential Requests Test ({num_requests} requests)")
-    print(f"{'='*60}")
+class TestMemoryBaseline:
+    """Test baseline memory functionality"""
     
-    test_texts = [
-        "This is a short test sentence.",
-        "This is a medium length test sentence that contains more words and should take more processing time.",
-        "This is a much longer test sentence that contains significantly more words and should demonstrate how the system handles longer text inputs with multiple chunks and memory management across extended processing periods.",
-    ]
-    
-    memory_snapshots = []
-    request_results = []
-    
-    for i in range(num_requests):
-        text = test_texts[i % len(test_texts)]
-        print(f"\nRequest {i+1}/{num_requests}: '{text[:50]}{'...' if len(text) > 50 else ''}'")
+    def test_memory_status_endpoint(self, api_client):
+        """Test that memory status endpoint is available"""
+        response = api_client.get("/memory")
+        assert response.status_code == 200
         
-        # Get memory before request
-        memory_before = get_memory_status()
+        data = response.json()
+        assert "memory_info" in data
+        
+    def test_memory_reset(self, api_client):
+        """Test memory tracking reset"""
+        response = api_client.post("/memory/reset?confirm=true")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data.get("status") == "reset"
+        
+    def test_memory_cleanup(self, api_client):
+        """Test manual memory cleanup"""
+        response = api_client.get("/memory?cleanup=true&force_cuda_clear=true")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "cleanup_performed" in data
+
+
+class TestMemoryTracking:
+    """Test memory tracking during operations"""
+    
+    def test_memory_tracking_during_speech_generation(self, api_client, memory_baseline):
+        """Test memory tracking during a single speech generation"""
+        # Get initial memory
+        initial_response = api_client.get("/memory")
+        assert initial_response.status_code == 200
+        initial_memory = initial_response.json()
         
         # Generate speech
-        result = generate_speech(text, i+1)
+        text = TEST_TEXTS["medium"]
+        result = generate_speech_and_validate(
+            api_client, text, params={"exaggeration": 0.6}
+        )
+        assert result["success"]
         
-        # Get memory after request
-        memory_after = get_memory_status()
+        # Get memory after generation
+        final_response = api_client.get("/memory")
+        assert final_response.status_code == 200
+        final_memory = final_response.json()
         
-        # Store results
-        request_results.append(result)
-        memory_snapshots.append({
-            "request_id": i+1,
-            "memory_before": memory_before.get('memory_info', {}),
-            "memory_after": memory_after.get('memory_info', {}),
-            "request_counter": memory_after.get('request_counter', 0)
-        })
+        # Verify memory tracking shows the request
+        initial_requests = initial_memory.get("request_counter", 0)
+        final_requests = final_memory.get("request_counter", 0)
+        assert final_requests > initial_requests
         
-        # Print status
-        if result['success']:
-            print(f"  ✓ Success: {result['duration']:.2f}s, {result['audio_size']:,} bytes")
-        else:
-            print(f"  ✗ Failed: {result.get('error', 'Unknown error')}")
+    @pytest.mark.parametrize("text_key", ["short", "medium", "long"])
+    def test_memory_usage_by_text_length(self, api_client, text_key):
+        """Test memory usage with different text lengths"""
+        # Reset memory tracking
+        reset_response = api_client.post("/memory/reset?confirm=true")
+        assert reset_response.status_code == 200
         
-        # Print memory change
-        if 'memory_info' in memory_before and 'memory_info' in memory_after:
-            cpu_before = memory_before['memory_info'].get('cpu_memory_mb', 0)
-            cpu_after = memory_after['memory_info'].get('cpu_memory_mb', 0)
-            cpu_diff = cpu_after - cpu_before
+        # Get baseline
+        baseline_response = api_client.get("/memory")
+        assert baseline_response.status_code == 200
+        baseline = baseline_response.json()
+        
+        # Generate speech
+        text = TEST_TEXTS[text_key]
+        result = generate_speech_and_validate(api_client, text)
+        assert result["success"]
+        
+        # Check memory after
+        after_response = api_client.get("/memory")
+        assert after_response.status_code == 200
+        after = after_response.json()
+        
+        # Memory should have increased
+        if "memory_info" in baseline and "memory_info" in after:
+            baseline_cpu = baseline["memory_info"].get("cpu_memory_mb", 0)
+            after_cpu = after["memory_info"].get("cpu_memory_mb", 0)
             
-            print(f"  📊 CPU Memory: {cpu_before:.1f}MB → {cpu_after:.1f}MB ({cpu_diff:+.1f}MB)")
-            
-            if 'gpu_memory_allocated_mb' in memory_before['memory_info']:
-                gpu_before = memory_before['memory_info'].get('gpu_memory_allocated_mb', 0)
-                gpu_after = memory_after['memory_info'].get('gpu_memory_allocated_mb', 0)
-                gpu_diff = gpu_after - gpu_before
-                print(f"  📊 GPU Memory: {gpu_before:.1f}MB → {gpu_after:.1f}MB ({gpu_diff:+.1f}MB)")
-        
-        # Small delay between requests
-        time.sleep(0.5)
-    
-    return memory_snapshots, request_results
+            # Memory should increase with longer texts
+            assert after_cpu >= baseline_cpu
 
-def test_concurrent_requests(num_concurrent: int = 3):
+
+class TestSequentialRequests:
+    """Test memory usage with sequential requests"""
+    
+    @pytest.mark.slow
+    def test_sequential_memory_usage(self, api_client, memory_baseline):
+        """Test memory usage with multiple sequential requests"""
+        memory_snapshots = []
+        num_requests = 5
+        
+        for i in range(num_requests):
+            # Get memory before request
+            before_response = api_client.get("/memory")
+            assert before_response.status_code == 200
+            memory_before = before_response.json()
+            
+            # Generate speech
+            text = f"Sequential memory test request {i+1}. {TEST_TEXTS['short']}"
+            result = generate_speech_and_validate(
+                api_client, text, params={"exaggeration": 0.5 + (i * 0.1)}
+            )
+            assert result["success"]
+            
+            # Get memory after request
+            after_response = api_client.get("/memory")
+            assert after_response.status_code == 200
+            memory_after = after_response.json()
+            
+            memory_snapshots.append({
+                "request_id": i+1,
+                "memory_before": memory_before.get("memory_info", {}),
+                "memory_after": memory_after.get("memory_info", {}),
+                "request_counter": memory_after.get("request_counter", 0)
+            })
+            
+            # Brief pause between requests
+            time.sleep(0.5)
+        
+        # Verify memory tracking
+        assert len(memory_snapshots) == num_requests
+        
+        # Check that request counter increased
+        first_counter = memory_snapshots[0].get("request_counter", 0)
+        last_counter = memory_snapshots[-1].get("request_counter", 0)
+        assert last_counter >= first_counter + num_requests - 1
+        
+    @pytest.mark.slow  
+    def test_memory_growth_trend(self, api_client, memory_baseline):
+        """Test memory growth trends over multiple requests"""
+        num_requests = 10
+        cpu_values = []
+        
+        for i in range(num_requests):
+            # Generate speech
+            text = f"Memory growth test {i+1}. {TEST_TEXTS['short']}"
+            result = generate_speech_and_validate(api_client, text)
+            assert result["success"]
+            
+            # Get memory usage
+            response = api_client.get("/memory")
+            assert response.status_code == 200
+            memory_data = response.json()
+            
+            if "memory_info" in memory_data:
+                cpu_mb = memory_data["memory_info"].get("cpu_memory_mb", 0)
+                cpu_values.append(cpu_mb)
+            
+            time.sleep(0.3)
+        
+        if cpu_values:
+            # Check that memory doesn't grow excessively
+            min_memory = min(cpu_values)
+            max_memory = max(cpu_values)
+            growth_ratio = max_memory / min_memory if min_memory > 0 else 1
+            
+            # Memory shouldn't grow more than 50% over baseline
+            assert growth_ratio < 1.5, f"Memory grew by {((growth_ratio-1)*100):.1f}%"
+
+
+class TestConcurrentMemoryUsage:
     """Test memory usage with concurrent requests"""
-    print(f"\n{'='*60}")
-    print(f"Concurrent Requests Test ({num_concurrent} concurrent)")
-    print(f"{'='*60}")
     
-    test_text = "This is a test sentence for concurrent processing to evaluate memory usage patterns."
-    
-    # Get memory before concurrent requests
-    memory_before = get_memory_status()
-    
-    # Run concurrent requests
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_concurrent) as executor:
-        futures = [
-            executor.submit(generate_speech, test_text, i+1) 
-            for i in range(num_concurrent)
+    @pytest.mark.slow
+    def test_concurrent_memory_impact(self, api_client, memory_baseline):
+        """Test memory impact of concurrent requests"""
+        # Get memory before concurrent requests
+        before_response = api_client.get("/memory")
+        assert before_response.status_code == 200
+        memory_before = before_response.json()
+        
+        # Run concurrent requests
+        requests_data = [
+            {
+                "id": i,
+                "endpoint": "/v1/audio/speech",
+                "payload": {
+                    "input": f"Concurrent memory test {i}. {TEST_TEXTS['short']}",
+                    "exaggeration": 0.5 + (i * 0.1)
+                }
+            }
+            for i in range(3)
         ]
         
-        results = []
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                result = future.result()
-                results.append(result)
-                if result['success']:
-                    print(f"  ✓ Request {result['request_id']}: {result['duration']:.2f}s")
-                else:
-                    print(f"  ✗ Request {result['request_id']}: {result.get('error', 'Failed')}")
-            except Exception as e:
-                print(f"  ✗ Concurrent request failed: {e}")
-    
-    # Get memory after concurrent requests
-    memory_after = get_memory_status()
-    
-    # Print memory comparison
-    if 'memory_info' in memory_before and 'memory_info' in memory_after:
-        cpu_before = memory_before['memory_info'].get('cpu_memory_mb', 0)
-        cpu_after = memory_after['memory_info'].get('cpu_memory_mb', 0)
-        cpu_diff = cpu_after - cpu_before
+        results = run_concurrent_requests(api_client, requests_data, max_workers=3)
         
-        print(f"\n📊 Concurrent Memory Impact:")
-        print(f"  CPU: {cpu_before:.1f}MB → {cpu_after:.1f}MB ({cpu_diff:+.1f}MB)")
+        # Verify requests succeeded
+        successful_results = [r for r in results if r["success"]]
+        assert len(successful_results) >= 2  # Allow for some failures
         
-        if 'gpu_memory_allocated_mb' in memory_before['memory_info']:
-            gpu_before = memory_before['memory_info'].get('gpu_memory_allocated_mb', 0)
-            gpu_after = memory_after['memory_info'].get('gpu_memory_allocated_mb', 0)
-            gpu_diff = gpu_after - gpu_before
-            print(f"  GPU: {gpu_before:.1f}MB → {gpu_after:.1f}MB ({gpu_diff:+.1f}MB)")
-    
-    return results
+        # Get memory after concurrent requests
+        after_response = api_client.get("/memory")
+        assert after_response.status_code == 200
+        memory_after = after_response.json()
+        
+        # Verify memory tracking
+        if "memory_info" in memory_before and "memory_info" in memory_after:
+            before_cpu = memory_before["memory_info"].get("cpu_memory_mb", 0)
+            after_cpu = memory_after["memory_info"].get("cpu_memory_mb", 0)
+            
+            # Memory should not grow excessively from concurrent requests
+            if before_cpu > 0:
+                growth_ratio = after_cpu / before_cpu
+                assert growth_ratio < 2.0, f"Memory doubled during concurrent requests"
 
-def test_manual_cleanup():
-    """Test manual memory cleanup functionality"""
-    print(f"\n{'='*60}")
-    print("Manual Cleanup Test")
-    print(f"{'='*60}")
-    
-    # Get memory before cleanup
-    memory_before = get_memory_status()
-    print("Memory before cleanup:")
-    if 'memory_info' in memory_before:
-        memory_info = memory_before['memory_info']
-        print(f"  CPU: {memory_info.get('cpu_memory_mb', 0):.1f}MB")
-        if 'gpu_memory_allocated_mb' in memory_info:
-            print(f"  GPU: {memory_info.get('gpu_memory_allocated_mb', 0):.1f}MB")
-    
-    # Perform cleanup
-    print("\nPerforming manual cleanup...")
-    cleanup_result = perform_cleanup()
-    
-    if cleanup_result.get('cleanup_performed'):
-        print(f"✓ Cleanup performed: {cleanup_result.get('collected_objects', 0)} objects collected")
-        if cleanup_result.get('cuda_cache_cleared'):
-            print("✓ CUDA cache cleared")
-        
-        # Show memory after cleanup
-        if 'memory_info_after_cleanup' in cleanup_result:
-            memory_after = cleanup_result['memory_info_after_cleanup']
-            print(f"\nMemory after cleanup:")
-            print(f"  CPU: {memory_after.get('cpu_memory_mb', 0):.1f}MB")
-            if 'gpu_memory_allocated_mb' in memory_after:
-                print(f"  GPU: {memory_after.get('gpu_memory_allocated_mb', 0):.1f}MB")
-    else:
-        print("✗ Cleanup not performed or failed")
-        if 'cleanup_error' in cleanup_result:
-            print(f"Error: {cleanup_result['cleanup_error']}")
 
-def analyze_memory_trends(memory_snapshots: List[Dict]):
-    """Analyze memory usage trends"""
-    print(f"\n{'='*60}")
-    print("Memory Trend Analysis")
-    print(f"{'='*60}")
+class TestMemoryCleanup:
+    """Test memory cleanup functionality"""
     
-    if not memory_snapshots:
-        print("No memory snapshots to analyze")
-        return
-    
-    # Calculate trends
-    cpu_values = []
-    gpu_values = []
-    
-    for snapshot in memory_snapshots:
-        cpu_after = snapshot['memory_after'].get('cpu_memory_mb', 0)
-        cpu_values.append(cpu_after)
+    def test_manual_cleanup_reduces_memory(self, api_client):
+        """Test that manual cleanup can reduce memory usage"""
+        # Generate some speech to use memory
+        for i in range(3):
+            text = f"Cleanup test {i}. {TEST_TEXTS['medium']}"
+            result = generate_speech_and_validate(api_client, text)
+            assert result["success"]
         
-        if 'gpu_memory_allocated_mb' in snapshot['memory_after']:
-            gpu_after = snapshot['memory_after'].get('gpu_memory_allocated_mb', 0)
-            gpu_values.append(gpu_after)
-    
-    if cpu_values:
-        print(f"CPU Memory Trend:")
-        print(f"  Min: {min(cpu_values):.1f}MB")
-        print(f"  Max: {max(cpu_values):.1f}MB")
-        print(f"  Avg: {sum(cpu_values)/len(cpu_values):.1f}MB")
-        print(f"  Growth: {cpu_values[-1] - cpu_values[0]:+.1f}MB")
+        # Get memory before cleanup
+        before_response = api_client.get("/memory")
+        assert before_response.status_code == 200
+        memory_before = before_response.json()
         
-        # Check for concerning trends
-        if cpu_values[-1] > cpu_values[0] * 1.2:  # 20% growth
-            print("  ⚠️  Warning: Significant CPU memory growth detected")
-    
-    if gpu_values:
-        print(f"\nGPU Memory Trend:")
-        print(f"  Min: {min(gpu_values):.1f}MB")
-        print(f"  Max: {max(gpu_values):.1f}MB")
-        print(f"  Avg: {sum(gpu_values)/len(gpu_values):.1f}MB")
-        print(f"  Growth: {gpu_values[-1] - gpu_values[0]:+.1f}MB")
+        # Perform cleanup
+        cleanup_response = api_client.get("/memory?cleanup=true&force_cuda_clear=true")
+        assert cleanup_response.status_code == 200
+        cleanup_data = cleanup_response.json()
         
-        # Check for concerning trends
-        if gpu_values[-1] > gpu_values[0] * 1.2:  # 20% growth
-            print("  ⚠️  Warning: Significant GPU memory growth detected")
+        # Check cleanup was performed
+        assert cleanup_data.get("cleanup_performed") is True
+        
+        # Memory after cleanup should be reported
+        if "memory_info_after_cleanup" in cleanup_data:
+            after_memory = cleanup_data["memory_info_after_cleanup"]
+            before_cpu = memory_before.get("memory_info", {}).get("cpu_memory_mb", 0)
+            after_cpu = after_memory.get("cpu_memory_mb", 0)
+            
+            # Cleanup should not increase memory
+            assert after_cpu <= before_cpu * 1.1  # Allow 10% variance
+            
+    def test_cleanup_with_collected_objects(self, api_client):
+        """Test cleanup reports collected objects"""
+        # Generate speech to create objects for cleanup
+        text = TEST_TEXTS["medium"]
+        result = generate_speech_and_validate(api_client, text)
+        assert result["success"]
+        
+        # Perform cleanup
+        response = api_client.get("/memory?cleanup=true")
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "cleanup_performed" in data
+        
+        # Should report collected objects (may be 0, which is fine)
+        if "collected_objects" in data:
+            assert isinstance(data["collected_objects"], int)
+            assert data["collected_objects"] >= 0
 
-def main():
-    """Run comprehensive memory management tests"""
-    print("🧪 Chatterbox TTS API - Memory Management Test Suite")
-    print(f"API URL: {API_BASE_URL}")
+
+class TestMemoryLimitsAndErrors:
+    """Test memory-related limits and error conditions"""
     
-    # Check if API is running
-    try:
-        response = requests.get(f"{API_BASE_URL}/health")
-        if response.status_code != 200:
-            print("❌ API is not responding. Please start the server first.")
-            return
-        print("✓ API is running")
-    except Exception as e:
-        print(f"❌ Cannot connect to API: {e}")
-        return
-    
-    # Run tests
-    initial_memory = test_memory_baseline()
-    memory_snapshots, request_results = test_sequential_requests(15)
-    concurrent_results = test_concurrent_requests(3)
-    test_manual_cleanup()
-    analyze_memory_trends(memory_snapshots)
-    
-    # Final summary
-    print(f"\n{'='*60}")
-    print("Test Summary")
-    print(f"{'='*60}")
-    
-    successful_requests = sum(1 for r in request_results if r['success'])
-    total_requests = len(request_results)
-    
-    print(f"Sequential Requests: {successful_requests}/{total_requests} successful")
-    
-    concurrent_success = sum(1 for r in concurrent_results if r['success'])
-    print(f"Concurrent Requests: {concurrent_success}/{len(concurrent_results)} successful")
-    
-    # Memory management recommendations
-    final_memory = get_memory_status()
-    if 'memory_info' in initial_memory and 'memory_info' in final_memory:
-        initial_cpu = initial_memory['memory_info'].get('cpu_memory_mb', 0)
-        final_cpu = final_memory['memory_info'].get('cpu_memory_mb', 0)
-        cpu_growth = final_cpu - initial_cpu
+    def test_memory_status_format(self, api_client):
+        """Test memory status response format"""
+        response = api_client.get("/memory")
+        assert response.status_code == 200
         
-        print(f"\nOverall Memory Growth: {cpu_growth:+.1f}MB CPU")
+        data = response.json()
+        required_fields = ["memory_info", "request_counter"]
         
-        if cpu_growth > 100:  # 100MB growth
-            print("🚨 Recommendation: Consider reducing MEMORY_CLEANUP_INTERVAL")
-        elif cpu_growth > 50:   # 50MB growth
-            print("⚠️  Recommendation: Monitor memory usage in production")
-        else:
-            print("✅ Memory usage appears stable")
-    
-    print(f"\n🔧 Memory Management Endpoints:")
-    print(f"  Monitor: GET {API_BASE_URL}/memory")
-    print(f"  Cleanup: GET {API_BASE_URL}/memory?cleanup=true")
-    print(f"  Reset: POST {API_BASE_URL}/memory/reset?confirm=true")
+        for field in required_fields:
+            assert field in data
+            
+        # Check memory_info structure
+        memory_info = data["memory_info"]
+        assert "cpu_memory_mb" in memory_info
+        assert isinstance(memory_info["cpu_memory_mb"], (int, float))
+        assert memory_info["cpu_memory_mb"] >= 0
+        
+    def test_invalid_cleanup_parameters(self, api_client):
+        """Test cleanup with invalid parameters"""
+        # Test with invalid parameter
+        response = api_client.get("/memory?cleanup=invalid")
+        # Should still work, parameter should be ignored or handled gracefully
+        assert response.status_code in [200, 400]
+        
+    def test_reset_without_confirmation(self, api_client):
+        """Test reset endpoint requires confirmation"""
+        response = api_client.post("/memory/reset")
+        # Should require confirmation
+        assert response.status_code in [400, 422]
+
 
 if __name__ == "__main__":
-    main() 
+    # For backward compatibility, allow running as script
+    pytest.main([__file__, "-v", "--runslow"]) 
